@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import functools
 import json
 import os
 import threading
@@ -29,6 +30,72 @@ PORT = int(os.getenv("PORT", "8000"))
 APP_TIMEZONE = ZoneInfo(os.getenv("GARMIN_TIMEZONE", "Europe/Madrid"))
 RECOVERY_MAX_FRESH_MINUTES = max(15, int(os.getenv("RECOVERY_MAX_FRESH_MINUTES", "360")))
 RECOVERY_CROSS_DAY_STALE_MINUTES = max(15, int(os.getenv("RECOVERY_CROSS_DAY_STALE_MINUTES", "180")))
+GARMIN_LANGUAGE = os.getenv("GARMIN_LANGUAGE", "es").lower()
+
+# Traducción de enums de la API de Garmin al español de Garmin Connect
+_GARMIN_ES: dict[str, str] = {
+    # Estado HRV / VFC
+    "BALANCED": "Equilibrado",
+    "UNBALANCED": "Desequilibrado",
+    "LOW": "Bajo",
+    "POOR": "Deficiente",
+    "NO_STATUS": "Sin estado",
+    # Estrés
+    "REST": "Reposo",
+    "RESTING": "Reposo",
+    "CALM": "Reposo",
+    "MEDIUM": "Medio",
+    "HIGH": "Alto",
+    # Fases de sueño (la API devuelve minúsculas)
+    "awake": "Despierto",
+    "light": "Ligero",
+    "deep": "Profundo",
+    "rem": "REM",
+    "AWAKE": "Despierto",
+    "LIGHT": "Ligero",
+    "DEEP": "Profundo",
+    "REM": "REM",
+    # Estado de entrenamiento
+    "PRODUCTIVE": "Productivo",
+    "MAINTAINING": "Manteniendo",
+    "RECOVERY": "Recuperación",
+    "OVERREACHING": "Excesivo",
+    "UNPRODUCTIVE": "No productivo",
+    "DETRAINING": "Pérdida de forma",
+    "PEAKING": "Pico de forma",
+    # Efecto del entrenamiento
+    "IMPROVING": "Mejorando",
+    "HIGHLY_AEROBIC": "Aeróbico intenso",
+    "AEROBIC": "Aeróbico",
+    "ANAEROBIC": "Anaeróbico",
+    "TEMPO": "Umbral",
+    # Predisposición para entrenar
+    "EXCELLENT": "Óptima",
+    "GOOD": "Alta",
+    "FAIR": "Moderada",
+    "BAD": "Baja",
+    "VERY_BAD": "Muy baja",
+    # Otros comunes
+    "OPTIMAL": "Óptimo",
+    "MODERATE": "Moderado",
+    "NONE": "Sin datos",
+    "UNKNOWN": "Desconocido",
+    "ACTIVE": "Activo",
+    "INACTIVE": "Inactivo",
+}
+
+
+def _translate_garmin(obj: Any) -> Any:
+    """Traduce recursivamente los enums de Garmin al español de Garmin Connect."""
+    if not GARMIN_LANGUAGE.startswith("es"):
+        return obj
+    if isinstance(obj, dict):
+        return {k: _translate_garmin(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_translate_garmin(i) for i in obj]
+    if isinstance(obj, str) and obj in _GARMIN_ES:
+        return _GARMIN_ES[obj]
+    return obj
 
 RAILWAY_VOLUME_ROOT = Path(os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "/data"))
 VOLUME_ROOT = RAILWAY_VOLUME_ROOT  # backward compatibility for legacy references
@@ -82,6 +149,18 @@ mcp = FastMCP(
     )
 ),
 )
+
+# Aplica _translate_garmin a la salida de todos los tools automáticamente
+if GARMIN_LANGUAGE.startswith("es"):
+    _orig_mcp_tool = mcp.tool
+
+    def _translating_tool(fn):
+        @functools.wraps(fn)
+        def _wrapped(*args, **kwargs):
+            return _translate_garmin(fn(*args, **kwargs))
+        return _orig_mcp_tool(_wrapped)
+
+    mcp.tool = _translating_tool
 
 
 def _now_iso() -> str:
