@@ -7,7 +7,7 @@ Desplegado en Railway con transporte HTTP streamable (FastMCP 3.2.4).
 
 ---
 
-## Herramientas disponibles (37 total)
+## Herramientas disponibles (57 total)
 
 ### Snapshot diario y caché
 | Herramienta | Descripción |
@@ -18,23 +18,39 @@ Desplegado en Railway con transporte HTTP streamable (FastMCP 3.2.4).
 | `get_raw_sources` | Datos brutos de Garmin sin procesar |
 | `get_primary_device_info` | Información del dispositivo principal |
 
-### Actividades
+### Actividades — listado e historial
 | Herramienta | Descripción |
 |---|---|
 | `get_recent_activities` | Lista de actividades recientes |
-| `get_activity_fit_download` | Descarga el fichero .fit de una actividad |
-| `get_activity_full` | Datos completos de una actividad (con series temporales opcional) |
-| `get_activity_time_series` | Series temporales de FC, ritmo, etc. de una actividad |
-| `get_recent_activities_full` | Datos completos de las últimas N actividades |
-| `get_activity_all_data` | Todos los datos disponibles de una actividad |
-| `get_recent_activities_catalog` | Catálogo compacto de actividades recientes |
-| `get_recent_activities_all_data` | Datos completos de las últimas N actividades con series |
-| `get_activity_sport_profile` | Perfil deportivo de una actividad |
-| `get_recent_activity_sport_profiles` | Perfiles deportivos de las últimas N actividades |
-| `get_activity_visible_profile` | Vista de actividad alineada con Garmin Connect ES |
-| `get_activity_evaluation` | Evaluación del entrenador virtual de Garmin para una actividad |
-| `get_activities_paged` | Historial paginado de actividades (hasta 100 por página) |
+| `get_last_activity` | Última actividad registrada (acceso rápido) |
+| `get_activity_types` | Tipos de actividad disponibles en Garmin |
+| `get_activities_paged` | Historial paginado (hasta 100 por página) |
 | `get_activities_in_range` | Actividades entre dos fechas con filtro por tipo |
+
+### Actividades — datos detallados
+| Herramienta | Descripción |
+|---|---|
+| `get_activity_fit_download` | Descarga el fichero .fit de una actividad |
+| `get_activity_full` | Datos completos con series temporales opcionales |
+| `get_activity_time_series` | Series temporales de FC, ritmo, potencia, etc. |
+| `get_activity_all_data` | Todos los datos disponibles de una actividad |
+| `get_activity_sport_profile` | Perfil deportivo de una actividad |
+| `get_activity_visible_profile` | Vista alineada con Garmin Connect ES |
+| `get_activity_evaluation` | Evaluación del entrenador virtual de Garmin |
+| `get_activity_splits` | Splits kilométricos detallados |
+| `get_activity_split_summaries` | Resumen de splits por bloque/fase |
+| `get_activity_hr_in_timezones` | Distribución del tiempo por zona de FC |
+| `get_activity_exercise_sets` | Series de fuerza: ejercicio, reps, peso |
+| `get_activity_weather` | Condiciones meteorológicas durante el entreno |
+| `get_activity_gear` | Material usado en una actividad concreta |
+
+### Actividades — vistas múltiples
+| Herramienta | Descripción |
+|---|---|
+| `get_recent_activities_full` | Datos completos de las últimas N actividades |
+| `get_recent_activities_catalog` | Catálogo compacto de actividades recientes |
+| `get_recent_activities_all_data` | Datos completos con series de las últimas N |
+| `get_recent_activity_sport_profiles` | Perfiles deportivos de las últimas N actividades |
 
 ### Vistas híbridas (resumen inteligente)
 | Herramienta | Descripción |
@@ -46,28 +62,48 @@ Desplegado en Railway con transporte HTTP streamable (FastMCP 3.2.4).
 | `get_hybrid_user_briefing` | Briefing completo del usuario para el día |
 | `get_hybrid_nutrition_briefing` | Briefing de nutrición e hidratación |
 
-### Historial y wellness por rango
+### Wellness diario
 | Herramienta | Descripción |
 |---|---|
 | `get_daily_wellness` | Métricas completas de un día (pasos, BB, sueño, HRV…) |
-| `get_wellness_range` | Resumen wellness diario compacto para un rango (máx 30 días) |
+| `get_wellness_range` | Resumen wellness compacto para un rango (máx 30 días) |
+| `get_all_day_stress` | Curva de estrés minuto a minuto durante el día |
+| `get_steps_data` | Serie temporal de pasos (intervalos de 15 min) |
+| `get_daily_steps` | Pasos diarios totales en un rango de fechas |
+| `get_floors` | Pisos subidos y bajados durante el día |
+| `get_stats_and_body` | Resumen combinado de actividad + composición corporal |
+| `get_blood_pressure` | Registros de presión arterial en un rango de fechas |
 
 ### Rendimiento y predicciones
 | Herramienta | Descripción |
 |---|---|
-| `get_race_predictions` | Predicciones de tiempo para 5K, 10K, media maratón y maratón |
-| `get_personal_records` | Récords personales por distancia y tipo de actividad |
+| `get_race_predictions` | Predicciones para 5K, 10K, media maratón y maratón |
+| `get_personal_records` | Récords personales por distancia y tipo |
 | `get_fitness_age` | Edad física (Fitness Age) calculada por Garmin |
-| `get_endurance_score` | Puntuación de resistencia aeróbica (Endurance Score) |
-| `get_hill_score` | Puntuación de rendimiento en montaña/desnivel (Hill Score) |
+| `get_endurance_score` | Puntuación de resistencia aeróbica |
+| `get_hill_score` | Puntuación de rendimiento en desnivel |
+| `get_progress_summary` | Progresión de distancia/tiempo/calorías entre fechas |
 
 ### Objetivos, material y peso
 | Herramienta | Descripción |
 |---|---|
 | `get_goals` | Objetivos de entrenamiento activos, futuros o pasados |
-| `get_gear` | Material deportivo registrado (zapatillas, bicis) con estadísticas |
+| `get_gear` | Material deportivo registrado con estadísticas |
 | `get_weigh_ins` | Historial de pesajes en un rango de fechas |
 | `add_weigh_in` | Registra un nuevo pesaje en Garmin Connect |
+
+### Retos e insignias
+| Herramienta | Descripción |
+|---|---|
+| `get_earned_badges` | Insignias y logros conseguidos |
+| `get_badge_challenges` | Retos de insignias activos |
+| `get_adhoc_challenges` | Retos espontáneos activos |
+| `get_available_badge_challenges` | Retos disponibles para unirse |
+
+### Dispositivo
+| Herramienta | Descripción |
+|---|---|
+| `get_device_last_used` | Último dispositivo Garmin sincronizado |
 
 ---
 
@@ -107,36 +143,28 @@ En Railway → tu servicio → **Variables**:
 
 ### Paso 4 — Primer login
 
-Tras el primer despliegue, el servidor intentará autenticarse con Garmin automáticamente. Si Garmin pide verificación por email o MFA, revisa los logs de Railway para ver si hay algún paso manual.
+Tras el primer despliegue el servidor se autentica automáticamente. Si Garmin pide verificación por email o MFA, revisa los logs de Railway.
 
 ### Paso 5 — Conectar con Claude o ChatGPT
 
-Una vez desplegado, Railway te da una URL pública. La URL del endpoint MCP es:
-
+URL del endpoint MCP:
 ```
 https://tu-proyecto.up.railway.app/mcp
 ```
 
-**En Claude (claude.ai o app móvil):**
-Configuración → Conectores → Añadir conector MCP → pega la URL
+**En Claude:** Configuración → Conectores → Añadir conector MCP → pega la URL
 
-**En ChatGPT:**
-Ajustes → Conectores → URL personalizada → pega la URL
+**En ChatGPT:** Ajustes → Conectores → URL personalizada → pega la URL
 
 ### Verificar que funciona
 
-Abre en el navegador:
 ```
 https://tu-proyecto.up.railway.app/health
 ```
 
-Deberías ver algo como:
+Respuesta esperada:
 ```json
-{
-  "status": "ok",
-  "app": "Garmin Coach MCP",
-  "cache_status": "ok"
-}
+{ "status": "ok", "app": "Garmin Coach MCP", "cache_status": "ok" }
 ```
 
 ---
@@ -144,27 +172,20 @@ Deberías ver algo como:
 ## Desarrollo local
 
 ```bash
-# Clona el repo
 git clone https://github.com/tu-usuario/garmin-coach-mcp
 cd garmin-coach-mcp
-
-# Crea entorno virtual
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Instala dependencias
 pip install -r requirements.txt
 
-# Variables de entorno
 export GARMIN_EMAIL="tu@email.com"
 export GARMIN_PASSWORD="tu_contraseña"
 export GARMIN_TIMEZONE="Europe/Madrid"
 
-# Arranca el servidor
 python server.py
 ```
 
-El servidor queda en `http://localhost:8000/mcp`.
+Servidor en `http://localhost:8000/mcp`.
 
 ---
 
@@ -174,7 +195,7 @@ El servidor queda en `http://localhost:8000/mcp`.
 git push origin main
 ```
 
-Railway detecta el push y redespliegue automáticamente.
+Railway redespliegue automáticamente al detectar el push.
 
 ---
 
