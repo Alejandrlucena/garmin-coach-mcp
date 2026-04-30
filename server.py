@@ -173,17 +173,21 @@ mcp = FastMCP(
 ),
 )
 
-# Aplica _translate_garmin a la salida de todos los tools automáticamente
-if GARMIN_LANGUAGE.startswith("es"):
-    _orig_mcp_tool = mcp.tool
+# Registry de tools para el endpoint /api/tool
+_TOOL_REGISTRY: dict[str, Any] = {}
 
-    def _translating_tool(fn):
-        @functools.wraps(fn)
-        def _wrapped(*args, **kwargs):
-            return _translate_garmin(fn(*args, **kwargs))
-        return _orig_mcp_tool(_wrapped)
+# Aplica _translate_garmin a la salida de todos los tools y los registra en _TOOL_REGISTRY
+_orig_mcp_tool = mcp.tool
 
-    mcp.tool = _translating_tool
+def _wrapping_tool(fn):
+    @functools.wraps(fn)
+    def _wrapped(*args, **kwargs):
+        result = fn(*args, **kwargs)
+        return _translate_garmin(result) if GARMIN_LANGUAGE.startswith("es") else result
+    _TOOL_REGISTRY[fn.__name__] = _wrapped
+    return _orig_mcp_tool(_wrapped)
+
+mcp.tool = _wrapping_tool
 
 
 def _now_iso() -> str:
@@ -1014,6 +1018,60 @@ async def health(_: Request) -> JSONResponse:
             "volume_path": str(VOLUME_ROOT),
         }
     return JSONResponse(payload)
+
+
+# ---------------------------------------------------------------------------
+# API REST para consumo directo desde el navegador (garmin-entreno local)
+# ---------------------------------------------------------------------------
+
+_CORS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+}
+
+
+@mcp.custom_route("/api/tools", methods=["GET"])
+async def api_list_tools(_: Request) -> JSONResponse:
+    """Devuelve la lista de tools disponibles."""
+    return JSONResponse({"tools": sorted(_TOOL_REGISTRY.keys())}, headers=_CORS)
+
+
+@mcp.custom_route("/api/tool/{tool_name}", methods=["POST", "OPTIONS"])
+async def api_call_tool(request: Request) -> JSONResponse:
+    """Llama a cualquier tool MCP y devuelve el resultado como JSON."""
+    if request.method == "OPTIONS":
+        return JSONResponse({}, headers=_CORS)
+
+    tool_name = request.path_params.get("tool_name", "")
+    if tool_name not in _TOOL_REGISTRY:
+        return JSONResponse({"error": f"Tool '{tool_name}' no encontrado"}, status_code=404, headers=_CORS)
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    arguments = body.get("arguments", body)
+
+    try:
+        result = _TOOL_REGISTRY[tool_name](**arguments)
+        return JSONResponse(result, headers=_CORS)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500, headers=_CORS)
+
+
+@mcp.custom_route("/api/activities", methods=["GET", "OPTIONS"])
+async def api_activities(request: Request) -> JSONResponse:
+    """Lista de actividades recientes — atajo para la web."""
+    if request.method == "OPTIONS":
+        return JSONResponse({}, headers=_CORS)
+    limit = min(int(request.query_params.get("limit", "20")), 100)
+    try:
+        result = _TOOL_REGISTRY["get_recent_activities"](limit=limit)
+        return JSONResponse(result, headers=_CORS)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500, headers=_CORS)
 
 
 @mcp.custom_route("/download/{activity_id}", methods=["GET"])

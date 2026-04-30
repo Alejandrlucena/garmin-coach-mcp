@@ -5,3 +5,4 @@ __pycache__/
 .debug-data/
 garmin_tokens.json
 *.token
+data/
