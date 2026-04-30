@@ -201,4 +201,4 @@ Railway redespliegue automáticamente al detectar el push.
 
 ## Proyectos relacionados
 
-- [garmin-entreno](https://github.com/luce23/garmin-entreno) — Visualizador web de entrenamientos que consume los datos de este conector
+- [garmin-entreno](https://github.com/Alejandrlucena/garmin-entreno) — Visualizador web de entrenamientos que consume los datos de este conector
