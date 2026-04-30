@@ -34,54 +34,77 @@ GARMIN_LANGUAGE = os.getenv("GARMIN_LANGUAGE", "es").lower()
 
 # Traducción de enums de la API de Garmin al español de Garmin Connect
 _GARMIN_ES: dict[str, str] = {
-    # Estado HRV / VFC
+    # HRV / VFC
     "BALANCED": "Equilibrado",
     "UNBALANCED": "Desequilibrado",
     "LOW": "Bajo",
     "POOR": "Deficiente",
     "NO_STATUS": "Sin estado",
-    # Estrés
-    "REST": "Reposo",
-    "RESTING": "Reposo",
-    "CALM": "Reposo",
-    "MEDIUM": "Medio",
-    "HIGH": "Alto",
-    # Fases de sueño (la API devuelve minúsculas)
-    "awake": "Despierto",
-    "light": "Ligero",
-    "deep": "Profundo",
-    "rem": "REM",
+
+    # Estado de entrenamiento (Training Status)
+    "PRODUCTIVE": "Productivo",
+    "MAINTAINING": "Manteniendo",
+    "RECOVERY": "Recuperación",
+    "OVERREACHING": "Sobreentrenamiento",
+    "UNPRODUCTIVE": "No productivo",
+    "DETRAINING": "Pérdida de forma",
+    "PEAKING": "Pico de forma",
+    "OVERLOAD": "Sobrecarga",
+
+    # Predisposición para entrenar (Training Readiness)
+    "EXCELLENT": "Excelente",
+    "GOOD": "Buena",
+    "FAIR": "Regular",
+    "BAD": "Baja",
+    "VERY_BAD": "Muy baja",
+
+    # Fases de sueño (la API puede devolver mayúsculas o minúsculas)
     "AWAKE": "Despierto",
     "LIGHT": "Ligero",
     "DEEP": "Profundo",
     "REM": "REM",
-    # Estado de entrenamiento
-    "PRODUCTIVE": "Productivo",
-    "MAINTAINING": "Manteniendo",
-    "RECOVERY": "Recuperación",
-    "OVERREACHING": "Excesivo",
-    "UNPRODUCTIVE": "No productivo",
-    "DETRAINING": "Pérdida de forma",
-    "PEAKING": "Pico de forma",
-    # Efecto del entrenamiento
+    "awake": "Despierto",
+    "light": "Ligero",
+    "deep": "Profundo",
+    "rem": "REM",
+
+    # Puntuación de sueño (Sleep Score)
+    # GOOD → "Buena" (se comparte con Training Readiness, forma masculina es "Bueno")
+    # FAIR → "Regular" (ya definido arriba)
+    # POOR → "Deficiente" (ya definido arriba)
+    # EXCELLENT → "Excelente" (ya definido arriba)
+
+    # Efecto del entrenamiento (Training Effect)
     "IMPROVING": "Mejorando",
-    "HIGHLY_AEROBIC": "Aeróbico intenso",
+    "HIGHLY_AEROBIC": "Aeróbico alto",
     "AEROBIC": "Aeróbico",
     "ANAEROBIC": "Anaeróbico",
-    "TEMPO": "Umbral",
-    # Predisposición para entrenar
-    "EXCELLENT": "Óptima",
-    "GOOD": "Alta",
-    "FAIR": "Moderada",
-    "BAD": "Baja",
-    "VERY_BAD": "Muy baja",
-    # Otros comunes
-    "OPTIMAL": "Óptimo",
-    "MODERATE": "Moderado",
-    "NONE": "Sin datos",
+    "VO2MAX": "Mejora VO2max",
+    "ANAEROBIC_CAPACITY": "Capacidad anaeróbica",
+    "AEROBIC_BASE": "Base aeróbica",
+
+    # Zonas de intensidad
+    "ZONE_1": "Calentamiento",
+    "ZONE_2": "Suave",
+    "ZONE_3": "Aeróbica",
+    "ZONE_4": "Umbral",
+    "ZONE_5": "Máximo",
+
+    # Tipos de actividad
+    "treadmill_running": "Carrera en cinta",
+    "strength_training": "Fuerza",
+
+    # Mensajes Body Battery / feedback UI
+    "DAY_STRESSFUL_AND_INACTIVE": "Día estresante e inactivo",
+    "SLEEP_TIME_PASSED_STRESSFUL_AND_INACTIVE": "Noche estresante + inactividad",
+
+    # Insights de sueño
+    "NEGATIVE_STRENUOUS_EXERCISE": "Ejercicio intenso previo",
+    "HARD_EXERCISE_NEG_FAIR_OR_POOR_SLEEP": "Entrenamiento duro + mal sueño",
+
+    # Genéricos
     "UNKNOWN": "Desconocido",
-    "ACTIVE": "Activo",
-    "INACTIVE": "Inactivo",
+    "NONE": "Sin datos",
 }
 
 
