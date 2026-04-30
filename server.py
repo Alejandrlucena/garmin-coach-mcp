@@ -52,9 +52,9 @@ _GARMIN_ES: dict[str, str] = {
     "OVERLOAD": "Sobrecarga",
 
     # Predisposición para entrenar (Training Readiness)
-    "EXCELLENT": "Excelente",
-    "GOOD": "Buena",
-    "FAIR": "Regular",
+    "EXCELLENT": "Óptima",
+    "GOOD": "Alta",
+    "FAIR": "Moderada",
     "BAD": "Baja",
     "VERY_BAD": "Muy baja",
 
@@ -76,7 +76,7 @@ _GARMIN_ES: dict[str, str] = {
 
     # Efecto del entrenamiento (Training Effect)
     "IMPROVING": "Mejorando",
-    "HIGHLY_AEROBIC": "Aeróbico alto",
+    "HIGHLY_AEROBIC": "Aeróbico intenso",
     "AEROBIC": "Aeróbico",
     "ANAEROBIC": "Anaeróbico",
     "VO2MAX": "Mejora VO2max",
