@@ -6754,6 +6754,314 @@ def add_weigh_in(
     return {"ok": True, "weight_kg": weight_kg, "date": parsed, "response": data}
 
 
+# === EXTRA API TOOLS START ===
+
+@mcp.tool
+def get_activity_splits(activity_id: str) -> dict:
+    """Splits kilométricos/por milla detallados de una actividad.
+    Incluye ritmo, FC, distancia y tiempo por cada split.
+    activity_id: identificador numérico de la actividad.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_activity_splits",), activity_id)
+    if data is None:
+        raise RuntimeError(err or f"No se pudieron obtener los splits de {activity_id}")
+    return {"activity_id": activity_id, "splits": data}
+
+
+@mcp.tool
+def get_activity_split_summaries(activity_id: str) -> dict:
+    """Resumen de splits de una actividad (por fase o segmento).
+    Complementa get_activity_splits con totales por bloque.
+    activity_id: identificador numérico de la actividad.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_activity_split_summaries",), activity_id)
+    if data is None:
+        raise RuntimeError(err or f"No se pudieron obtener los resúmenes de splits de {activity_id}")
+    return {"activity_id": activity_id, "split_summaries": data}
+
+
+@mcp.tool
+def get_activity_hr_in_timezones(activity_id: str) -> dict:
+    """Distribución del tiempo por zona de frecuencia cardíaca en una actividad.
+    Muestra cuánto tiempo se pasó en cada zona Z1-Z5.
+    activity_id: identificador numérico de la actividad.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_activity_hr_in_timezones",), activity_id)
+    if data is None:
+        raise RuntimeError(err or f"No se pudo obtener la distribución de FC por zonas de {activity_id}")
+    return {"activity_id": activity_id, "hr_in_timezones": data}
+
+
+@mcp.tool
+def get_activity_exercise_sets(activity_id: str) -> dict:
+    """Series de ejercicios de un entrenamiento de fuerza.
+    Incluye nombre del ejercicio, series, repeticiones, peso y duración.
+    activity_id: identificador numérico de la actividad.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_activity_exercise_sets",), activity_id)
+    if data is None:
+        raise RuntimeError(err or f"No se pudieron obtener los ejercicios de {activity_id}")
+    return {"activity_id": activity_id, "exercise_sets": data}
+
+
+@mcp.tool
+def get_activity_weather(activity_id: str) -> dict:
+    """Condiciones meteorológicas durante una actividad.
+    Incluye temperatura, humedad, viento y condición general.
+    activity_id: identificador numérico de la actividad.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_activity_weather",), activity_id)
+    if data is None:
+        raise RuntimeError(err or f"No se pudo obtener el tiempo meteorológico de {activity_id}")
+    return {"activity_id": activity_id, "weather": data}
+
+
+@mcp.tool
+def get_activity_gear(activity_id: str) -> dict:
+    """Material deportivo utilizado en una actividad concreta.
+    Útil para saber qué zapatillas o bicicleta se usó en cada entreno.
+    activity_id: identificador numérico de la actividad.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_activity_gear",), activity_id)
+    if data is None:
+        raise RuntimeError(err or f"No se pudo obtener el material de {activity_id}")
+    return {"activity_id": activity_id, "gear": data}
+
+
+@mcp.tool
+def get_last_activity() -> dict:
+    """Última actividad registrada en Garmin Connect.
+    Acceso rápido sin necesidad de conocer el activity_id.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_last_activity",))
+    if data is None:
+        raise RuntimeError(err or "No se pudo obtener la última actividad")
+    return {"last_activity": data}
+
+
+@mcp.tool
+def get_activity_types() -> dict:
+    """Lista de todos los tipos de actividad disponibles en Garmin Connect.
+    Útil para conocer los valores válidos del filtro activity_type.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_activity_types",))
+    if data is None:
+        raise RuntimeError(err or "No se pudieron obtener los tipos de actividad")
+    return {"activity_types": data}
+
+
+@mcp.tool
+def get_all_day_stress(target_date: str = None) -> dict:
+    """Curva de estrés minuto a minuto durante todo el día.
+    Permite ver picos y valles de estrés a lo largo del día.
+    Formato fecha: YYYY-MM-DD (por defecto hoy).
+    """
+    parsed = _parse_date(target_date)
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_all_day_stress",), parsed)
+    if data is None:
+        raise RuntimeError(err or f"No se pudo obtener el estrés del día {parsed}")
+    return {"date": parsed, "all_day_stress": data}
+
+
+@mcp.tool
+def get_steps_data(target_date: str = None) -> dict:
+    """Serie temporal de pasos a lo largo del día (intervalos de 15 min).
+    Permite ver la distribución de actividad durante el día.
+    Formato fecha: YYYY-MM-DD (por defecto hoy).
+    """
+    parsed = _parse_date(target_date)
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_steps_data",), parsed)
+    if data is None:
+        raise RuntimeError(err or f"No se pudieron obtener los pasos de {parsed}")
+    return {"date": parsed, "steps_data": data}
+
+
+@mcp.tool
+def get_daily_steps(
+    start_date: str = None,
+    end_date: str = None,
+) -> dict:
+    """Pasos diarios totales en un rango de fechas.
+    Sin fechas usa los últimos 7 días. Formato: YYYY-MM-DD.
+    """
+    ed = _parse_date(end_date) if end_date else _today_local().isoformat()
+    sd = _parse_date(start_date) if start_date else (
+        date.fromisoformat(ed) - timedelta(days=6)
+    ).isoformat()
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_daily_steps",), sd, ed)
+    if data is None:
+        raise RuntimeError(err or f"No se pudieron obtener los pasos diarios entre {sd} y {ed}")
+    return {"start_date": sd, "end_date": ed, "daily_steps": data}
+
+
+@mcp.tool
+def get_floors(target_date: str = None) -> dict:
+    """Pisos subidos y bajados durante el día.
+    Formato fecha: YYYY-MM-DD (por defecto hoy).
+    """
+    parsed = _parse_date(target_date)
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_floors", "get_floors_data"), parsed)
+    if data is None:
+        raise RuntimeError(err or f"No se pudieron obtener los pisos de {parsed}")
+    return {"date": parsed, "floors": data}
+
+
+@mcp.tool
+def get_blood_pressure(
+    start_date: str = None,
+    end_date: str = None,
+) -> dict:
+    """Registros de presión arterial en un rango de fechas.
+    Solo disponible si el dispositivo o la app registra tensión arterial.
+    Sin fechas usa los últimos 7 días. Formato: YYYY-MM-DD.
+    """
+    ed = _parse_date(end_date) if end_date else _today_local().isoformat()
+    sd = _parse_date(start_date) if start_date else (
+        date.fromisoformat(ed) - timedelta(days=6)
+    ).isoformat()
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(
+            api, ("get_blood_pressure", "get_blood_pressure_data"), sd, ed
+        )
+    if data is None:
+        raise RuntimeError(err or "No se pudo obtener la presión arterial")
+    return {"start_date": sd, "end_date": ed, "blood_pressure": data}
+
+
+@mcp.tool
+def get_stats_and_body(target_date: str = None) -> dict:
+    """Resumen combinado de actividad diaria y composición corporal.
+    Combina pasos, calorías, distancia y peso en una sola llamada.
+    Formato fecha: YYYY-MM-DD (por defecto hoy).
+    """
+    parsed = _parse_date(target_date)
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_stats_and_body",), parsed)
+    if data is None:
+        raise RuntimeError(err or f"No se pudieron obtener stats+cuerpo de {parsed}")
+    return {"date": parsed, "stats_and_body": data}
+
+
+@mcp.tool
+def get_progress_summary(
+    start_date: str = None,
+    end_date: str = None,
+    metric: str = "distance",
+) -> dict:
+    """Progresión de una métrica entre dos fechas.
+    metric: 'distance' (distancia), 'duration' (tiempo), 'elevationGain' (desnivel),
+            'movingDuration', 'calories', 'bmrCalories', 'steps'.
+    Sin fechas usa los últimos 30 días. Formato: YYYY-MM-DD.
+    """
+    ed = _parse_date(end_date) if end_date else _today_local().isoformat()
+    sd = _parse_date(start_date) if start_date else (
+        date.fromisoformat(ed) - timedelta(days=29)
+    ).isoformat()
+    valid = {"distance","duration","elevationGain","movingDuration","calories","bmrCalories","steps"}
+    if metric not in valid:
+        metric = "distance"
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(
+            api, ("get_progress_summary_between_dates",), sd, ed, metric
+        )
+    if data is None:
+        raise RuntimeError(err or f"No se pudo obtener el progreso de {metric}")
+    return {"start_date": sd, "end_date": ed, "metric": metric, "progress": data}
+
+
+@mcp.tool
+def get_earned_badges() -> dict:
+    """Insignias y logros conseguidos en Garmin Connect.
+    Muestra todos los badges desbloqueados hasta la fecha.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_earned_badges",))
+    if data is None:
+        raise RuntimeError(err or "No se pudieron obtener las insignias")
+    return {"earned_badges": data}
+
+
+@mcp.tool
+def get_badge_challenges(start: int = 1, limit: int = 20) -> dict:
+    """Retos de insignias activos en Garmin Connect.
+    start: índice inicial (paginación). limit: máximo de resultados.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_badge_challenges",), start, limit)
+    if data is None:
+        raise RuntimeError(err or "No se pudieron obtener los retos de insignias")
+    return {"start": start, "limit": limit, "badge_challenges": data}
+
+
+@mcp.tool
+def get_adhoc_challenges(start: int = 1, limit: int = 20) -> dict:
+    """Retos espontáneos activos en Garmin Connect.
+    start: índice inicial (paginación). limit: máximo de resultados.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_adhoc_challenges",), start, limit)
+    if data is None:
+        raise RuntimeError(err or "No se pudieron obtener los retos espontáneos")
+    return {"start": start, "limit": limit, "adhoc_challenges": data}
+
+
+@mcp.tool
+def get_available_badge_challenges(start: int = 1, limit: int = 20) -> dict:
+    """Retos de insignias disponibles para unirse en Garmin Connect.
+    start: índice inicial (paginación). limit: máximo de resultados.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_available_badge_challenges",), start, limit)
+    if data is None:
+        raise RuntimeError(err or "No se pudieron obtener los retos disponibles")
+    return {"start": start, "limit": limit, "available_challenges": data}
+
+
+@mcp.tool
+def get_device_last_used() -> dict:
+    """Información del último dispositivo Garmin utilizado para sincronizar.
+    Incluye modelo, firmware y fecha de última conexión.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_device_last_used",))
+    if data is None:
+        raise RuntimeError(err or "No se pudo obtener el último dispositivo usado")
+    return {"device_last_used": data}
+
+# === EXTRA API TOOLS END ===
+
 # === HISTORICAL DATA TOOLS END ===
 
 if __name__ == "__main__":
