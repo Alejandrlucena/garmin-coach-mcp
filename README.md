@@ -7,6 +7,99 @@ Desplegado en Railway con transporte HTTP streamable (FastMCP 3.2.4).
 
 ---
 
+## Ficheros del proyecto
+
+| Fichero | Para qué sirve |
+|---|---|
+| `server.py` | El servidor MCP con las 57 herramientas. Es el núcleo del proyecto |
+| `requirements.txt` | Las 3 dependencias Python: `fastmcp`, `garminconnect`, `curl_cffi` |
+| `Dockerfile` | Define el contenedor: Python 3.11, instala dependencias, arranca `server.py` |
+| `railway.toml` | Configuración de Railway: usa Dockerfile, reinicia si falla, healthcheck en `/health` |
+| `login_once.py` | Hace el primer login de Garmin en local y muestra el token JSON para copiarlo en Railway |
+| `bootstrap.sh` | Script todo-en-uno: instala Python/Railway, hace login, crea el proyecto y despliega automáticamente |
+
+---
+
+## Despliegue en Railway
+
+### Opción A — Automático con bootstrap.sh (recomendado)
+
+```bash
+chmod +x bootstrap.sh
+./bootstrap.sh
+```
+
+El script hace todo solo: instala dependencias, te pide las credenciales de Garmin, crea el proyecto en Railway y despliega. Al final te da la URL del servidor.
+
+### Opción B — Manual paso a paso
+
+**1. Obtener el token de Garmin**
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python login_once.py
+```
+
+Introduce tu email y contraseña de Garmin. Si tienes MFA activado, introduce el código que te llegue por email. Al final te muestra el JSON del token — cópialo entero.
+
+**2. Crear el proyecto en Railway**
+
+1. Ve a [railway.app](https://railway.app) → **New Project → Deploy from GitHub repo**
+2. Selecciona tu fork de este repositorio
+3. Railway detecta el `Dockerfile` automáticamente
+
+**3. Añadir volumen persistente**
+
+Railway → tu servicio → **Volumes** → **Add Volume** → Mount path: `/data`
+
+El volumen guarda los tokens para que no haya que re-autenticarse en cada reinicio.
+
+**4. Variables de entorno**
+
+Railway → tu servicio → **Variables**:
+
+| Variable | Descripción | Obligatorio |
+|---|---|---|
+| `GARMIN_EMAIL` | Email de tu cuenta Garmin Connect | ✓ |
+| `GARMIN_PASSWORD` | Contraseña de Garmin Connect | ✓ |
+| `GARMIN_TOKENS_JSON` | Token JSON obtenido con `login_once.py` | recomendado |
+| `GARMIN_TIMEZONE` | Tu zona horaria, ej: `Europe/Madrid` | recomendado |
+| `CACHE_MINUTES` | Minutos entre refrescos del caché (defecto: `30`) | opcional |
+
+**5. Verificar que funciona**
+
+```
+https://tu-proyecto.up.railway.app/health
+```
+
+Respuesta esperada:
+```json
+{ "status": "ok", "app": "Garmin Coach MCP", "cache_status": "ok" }
+```
+
+**6. Conectar con Claude o ChatGPT**
+
+URL del endpoint MCP:
+```
+https://tu-proyecto.up.railway.app/mcp
+```
+
+- **Claude:** Configuración → Conectores → Añadir conector MCP → pega la URL
+- **ChatGPT:** Ajustes → Conectores → URL personalizada → pega la URL
+
+---
+
+## Actualizar
+
+```bash
+git push origin main
+```
+
+Railway redespliegue automáticamente al detectar el push.
+
+---
+
 ## Herramientas disponibles (57 total)
 
 ### Snapshot diario y caché
@@ -104,98 +197,6 @@ Desplegado en Railway con transporte HTTP streamable (FastMCP 3.2.4).
 | Herramienta | Descripción |
 |---|---|
 | `get_device_last_used` | Último dispositivo Garmin sincronizado |
-
----
-
-## Despliegue en Railway
-
-### Requisitos previos
-- Cuenta en [Railway](https://railway.app)
-- Cuenta en [Garmin Connect](https://connect.garmin.com)
-- Python 3.11+
-
-### Paso 1 — Fork y conecta el repo
-
-1. Haz fork de este repositorio
-2. En Railway: **New Project → Deploy from GitHub repo**
-3. Selecciona tu fork
-
-### Paso 2 — Añade un volumen
-
-El servidor guarda los tokens de autenticación de Garmin en disco para no tener que re-autenticarse en cada reinicio.
-
-En Railway → tu servicio → **Volumes** → **Add Volume**:
-- Mount path: `/data`
-
-### Paso 3 — Variables de entorno
-
-En Railway → tu servicio → **Variables**:
-
-| Variable | Descripción | Obligatorio |
-|---|---|---|
-| `GARMIN_EMAIL` | Email de tu cuenta Garmin Connect | ✓ |
-| `GARMIN_PASSWORD` | Contraseña de Garmin Connect | ✓ |
-| `GARMIN_TIMEZONE` | Tu zona horaria, ej: `Europe/Madrid` | recomendado |
-| `CACHE_MINUTES` | Minutos entre refrescos del caché (defecto: `30`) | opcional |
-| `PORT` | Railway lo asigna automáticamente | automático |
-
-> **Nota:** Las credenciales se usan para hacer login en Garmin Connect y obtener tokens OAuth. No se almacenan en texto plano después del primer login.
-
-### Paso 4 — Primer login
-
-Tras el primer despliegue el servidor se autentica automáticamente. Si Garmin pide verificación por email o MFA, revisa los logs de Railway.
-
-### Paso 5 — Conectar con Claude o ChatGPT
-
-URL del endpoint MCP:
-```
-https://tu-proyecto.up.railway.app/mcp
-```
-
-**En Claude:** Configuración → Conectores → Añadir conector MCP → pega la URL
-
-**En ChatGPT:** Ajustes → Conectores → URL personalizada → pega la URL
-
-### Verificar que funciona
-
-```
-https://tu-proyecto.up.railway.app/health
-```
-
-Respuesta esperada:
-```json
-{ "status": "ok", "app": "Garmin Coach MCP", "cache_status": "ok" }
-```
-
----
-
-## Desarrollo local
-
-```bash
-git clone https://github.com/tu-usuario/garmin-coach-mcp
-cd garmin-coach-mcp
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-export GARMIN_EMAIL="tu@email.com"
-export GARMIN_PASSWORD="tu_contraseña"
-export GARMIN_TIMEZONE="Europe/Madrid"
-
-python server.py
-```
-
-Servidor en `http://localhost:8000/mcp`.
-
----
-
-## Actualizar en Railway
-
-```bash
-git push origin main
-```
-
-Railway redespliegue automáticamente al detectar el push.
 
 ---
 
