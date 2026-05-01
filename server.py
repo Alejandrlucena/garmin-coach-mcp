@@ -1067,6 +1067,38 @@ async def download_activity_fit(request: Request) -> Response:
 
 RAILWAY_FALLBACK_URL = os.getenv("RAILWAY_FALLBACK_URL", "https://garmin-coach-mcp-production.up.railway.app").rstrip("/")
 
+_WEB_CONFIG_FILE = RAILWAY_VOLUME_ROOT / "web_config.json"
+_WEB_CONFIG_ALLOWED_KEYS = {"driveUrl"}
+
+
+@mcp.custom_route("/config", methods=["GET"])
+async def get_web_config(_: Request) -> JSONResponse:
+    try:
+        if _WEB_CONFIG_FILE.exists():
+            return JSONResponse(json.loads(_WEB_CONFIG_FILE.read_text()))
+    except Exception:
+        pass
+    return JSONResponse({})
+
+
+@mcp.custom_route("/config", methods=["POST"])
+async def save_web_config(request: Request) -> JSONResponse:
+    try:
+        body = await request.json()
+        patch = {k: str(v) for k, v in body.items() if k in _WEB_CONFIG_ALLOWED_KEYS}
+        existing: dict = {}
+        if _WEB_CONFIG_FILE.exists():
+            try:
+                existing = json.loads(_WEB_CONFIG_FILE.read_text())
+            except Exception:
+                pass
+        existing.update(patch)
+        _WEB_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _WEB_CONFIG_FILE.write_text(json.dumps(existing))
+        return JSONResponse({"ok": True})
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
 
 @mcp.custom_route("/activities", methods=["GET"])
 async def list_activities_web(request: Request) -> JSONResponse:
