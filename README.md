@@ -34,7 +34,7 @@ Garmin Connect → garminconnect (Python) → server.py → Railway → Claude /
 
 Todos los endpoints incluyen CORS completo (`allow_origins=["*"]`) — el visualizador web puede llamarlos directamente desde el navegador, incluyendo desde móvil.
 
-Si los tokens locales han expirado, `/activities` y `/download` hacen fallback automático al servidor Railway de producción.
+Si los tokens locales han expirado, `/activities` y `/download` hacen fallback automático a la URL definida en `RAILWAY_FALLBACK_URL`.
 
 ---
 
@@ -92,13 +92,11 @@ Abre `http://localhost:8000` en el navegador para usar el visualizador web sin p
 
 ## Uso con el visualizador web
 
-El visualizador [garmin-entreno](https://github.com/Alejandrlucena/garmin-entreno) tiene un botón **🔌 Conector** que:
+El visualizador [garmin-entreno](https://github.com/Alejandrlucena/garmin-entreno) tiene un botón **🔌 Conector** que carga el `.fit` con un clic y renderiza la tabla directamente. Cada usuario configura la URL de su propio servidor en **⚙ Configurar**.
 
-- Por defecto apunta al servidor Railway (funciona desde cualquier dispositivo sin configuración)
-- Muestra solo actividades con datos de splits (oculta fuerza, yoga, etc.)
-- Carga el `.fit` con un clic y renderiza la tabla directamente
-
-Si corres el servidor localmente, abre `http://localhost:8000` — sirve el `index.html` directamente desde el servidor, sin problemas de CORS.
+- Despliega este repo en Railway, copia la URL que te dé y pégala en **⚙**
+- O arranca el servidor en local (`http://localhost:8000`) — sirve el `index.html` directamente, sin problemas de CORS
+- Solo muestra actividades con datos de splits (oculta fuerza, yoga, etc.)
 
 ---
 
