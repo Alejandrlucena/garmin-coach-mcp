@@ -15,7 +15,7 @@ Se despliega en Railway (el servidor vive ahí aunque el Mac esté apagado) y ta
 ## Flujo
 
 ```
-Garmin Connect → garminconnect (Python) → server.py → Railway → Claude / Web
+Garmin Connect → garminconnect (Python) → server.py → Railway → Claude / Web / Móvil
 ```
 
 ---
@@ -32,7 +32,9 @@ Garmin Connect → garminconnect (Python) → server.py → Railway → Claude /
 | `GET /debug/activities` | Debug: últimas 5 actividades |
 | `GET /debug/audit` | Debug: métricas normalizadas del caché |
 
-> Los endpoints `/activities` y `/download` incluyen CORS completo (`allow_origins=["*"]`) para que el visualizador web pueda llamarlos directamente desde el navegador.
+Todos los endpoints incluyen CORS completo (`allow_origins=["*"]`) — el visualizador web puede llamarlos directamente desde el navegador, incluyendo desde móvil.
+
+Si los tokens locales han expirado, `/activities` y `/download` hacen fallback automático al servidor Railway de producción.
 
 ---
 
@@ -58,6 +60,8 @@ python server.py
 # → http://localhost:8000
 ```
 
+Abre `http://localhost:8000` en el navegador para usar el visualizador web sin problemas de CORS.
+
 ---
 
 ## Despliegue en Railway
@@ -68,7 +72,7 @@ python server.py
 4. Variables de entorno necesarias:
    - `GARMIN_TOKENS_JSON` — JSON de tokens obtenido con `login_once.py`
    - `PORT` — Railway lo pone automáticamente
-5. Despliega
+5. Para redesplegar: `railway up` desde la carpeta del proyecto (requiere Railway CLI)
 
 ---
 
@@ -88,9 +92,13 @@ python server.py
 
 ## Uso con el visualizador web
 
-Si corres el servidor localmente, abre `http://localhost:8000` — sirve el `index.html` del repo [garmin-entreno](https://github.com/Alejandrlucena/garmin-entreno) directamente desde el servidor, sin problemas de CORS.
+El visualizador [garmin-entreno](https://github.com/Alejandrlucena/garmin-entreno) tiene un botón **🔌 Conector** que:
 
-El visualizador tiene un botón **🔌 Conector** que lista tus actividades y carga el .fit con un clic, sin subir archivos manualmente.
+- Por defecto apunta al servidor Railway (funciona desde cualquier dispositivo sin configuración)
+- Muestra solo actividades con datos de splits (oculta fuerza, yoga, etc.)
+- Carga el `.fit` con un clic y renderiza la tabla directamente
+
+Si corres el servidor localmente, abre `http://localhost:8000` — sirve el `index.html` directamente desde el servidor, sin problemas de CORS.
 
 ---
 
