@@ -28,6 +28,8 @@ Garmin Connect → garminconnect (Python) → server.py → Railway → Claude /
 | `GET /health` | Estado del servidor y del caché |
 | `GET /activities?limit=30` | Lista de actividades recientes (JSON) con CORS |
 | `GET /download/{activity_id}` | Descarga el .zip/.fit de una actividad con CORS |
+| `GET /config` | Lee la configuración web guardada en el volumen Railway |
+| `POST /config` | Guarda configuración web (solo clave `driveUrl`) en el volumen Railway |
 | `POST /mcp` | Endpoint MCP principal para Claude |
 | `GET /debug/activities` | Debug: últimas 5 actividades |
 | `GET /debug/audit` | Debug: métricas normalizadas del caché |
@@ -87,6 +89,17 @@ Abre `http://localhost:8000` en el navegador para usar el visualizador web sin p
 | `CACHE_MINUTES` | `30` | Minutos entre refresco de caché |
 | `ACTIVITY_LIMIT` | `8` | Límite de actividades en caché |
 | `RAILWAY_FALLBACK_URL` | URL Railway prod | Fallback si tokens locales fallan |
+
+---
+
+## Configuración web persistente (`/config`)
+
+El endpoint `/config` almacena la URL del Google Apps Script de Drive en el volumen de Railway (`/data/web_config.json`). Esto permite que el visualizador web sincronice su configuración automáticamente en todos los dispositivos: basta con introducir la URL del servidor una sola vez y la URL de Drive se carga sola.
+
+- `GET /config` — devuelve `{"driveUrl": "..."}` o `{}`
+- `POST /config` — acepta `{"driveUrl": "..."}` y lo persiste en disco
+
+Solo se permite la clave `driveUrl`. No se almacena ningún dato de usuario ni credencial.
 
 ---
 
