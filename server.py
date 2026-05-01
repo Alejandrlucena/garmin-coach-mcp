@@ -19,6 +19,8 @@ from garminconnect import (
     GarminConnectConnectionError,
     GarminConnectTooManyRequestsError,
 )
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
 
@@ -173,21 +175,17 @@ mcp = FastMCP(
 ),
 )
 
-# Registry de tools para el endpoint /api/tool
-_TOOL_REGISTRY: dict[str, Any] = {}
+# Aplica _translate_garmin a la salida de todos los tools automáticamente
+if GARMIN_LANGUAGE.startswith("es"):
+    _orig_mcp_tool = mcp.tool
 
-# Aplica _translate_garmin a la salida de todos los tools y los registra en _TOOL_REGISTRY
-_orig_mcp_tool = mcp.tool
+    def _translating_tool(fn):
+        @functools.wraps(fn)
+        def _wrapped(*args, **kwargs):
+            return _translate_garmin(fn(*args, **kwargs))
+        return _orig_mcp_tool(_wrapped)
 
-def _wrapping_tool(fn):
-    @functools.wraps(fn)
-    def _wrapped(*args, **kwargs):
-        result = fn(*args, **kwargs)
-        return _translate_garmin(result) if GARMIN_LANGUAGE.startswith("es") else result
-    _TOOL_REGISTRY[fn.__name__] = _wrapped
-    return _orig_mcp_tool(_wrapped)
-
-mcp.tool = _wrapping_tool
+    mcp.tool = _translating_tool
 
 
 def _now_iso() -> str:
@@ -999,7 +997,11 @@ def _background_refresh_loop() -> None:
 
 
 @mcp.custom_route("/", methods=["GET"])
-async def root(_: Request) -> PlainTextResponse:
+async def root(_: Request) -> Response:
+    from starlette.responses import HTMLResponse
+    index_path = Path(__file__).parent.parent / "index.html"
+    if index_path.exists():
+        return HTMLResponse(index_path.read_text(encoding="utf-8"))
     return PlainTextResponse("Garmin Coach MCP is running. MCP endpoint: /mcp | Health: /health")
 
 
@@ -1020,114 +1022,97 @@ async def health(_: Request) -> JSONResponse:
     return JSONResponse(payload)
 
 
-# ---------------------------------------------------------------------------
-# API REST para consumo directo desde el navegador (garmin-entreno local)
-# ---------------------------------------------------------------------------
-
-_CORS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-}
-
-
-@mcp.custom_route("/api/tools", methods=["GET"])
-async def api_list_tools(_: Request) -> JSONResponse:
-    """Devuelve la lista de tools disponibles."""
-    return JSONResponse({"tools": sorted(_TOOL_REGISTRY.keys())}, headers=_CORS)
-
-
-@mcp.custom_route("/api/tool/{tool_name}", methods=["POST", "OPTIONS"])
-async def api_call_tool(request: Request) -> JSONResponse:
-    """Llama a cualquier tool MCP y devuelve el resultado como JSON."""
-    if request.method == "OPTIONS":
-        return JSONResponse({}, headers=_CORS)
-
-    tool_name = request.path_params.get("tool_name", "")
-    if tool_name not in _TOOL_REGISTRY:
-        return JSONResponse({"error": f"Tool '{tool_name}' no encontrado"}, status_code=404, headers=_CORS)
-
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-
-    arguments = body.get("arguments", body)
-
-    try:
-        result = _TOOL_REGISTRY[tool_name](**arguments)
-        return JSONResponse(result, headers=_CORS)
-    except Exception as exc:
-        return JSONResponse({"error": str(exc)}, status_code=500, headers=_CORS)
-
-
-@mcp.custom_route("/api/activities", methods=["GET", "OPTIONS"])
-async def api_activities(request: Request) -> JSONResponse:
-    """Lista de actividades recientes — atajo para la web."""
-    if request.method == "OPTIONS":
-        return JSONResponse({}, headers=_CORS)
-    limit = min(int(request.query_params.get("limit", "20")), 100)
-    try:
-        result = _TOOL_REGISTRY["get_recent_activities"](limit=limit)
-        return JSONResponse(result, headers=_CORS)
-    except Exception as exc:
-        return JSONResponse({"error": str(exc)}, status_code=500, headers=_CORS)
-
-
 @mcp.custom_route("/download/{activity_id}", methods=["GET"])
 async def download_activity_fit(request: Request) -> Response:
+    import urllib.request as _urllib
     activity_id = request.path_params.get("activity_id")
-    
-    with FETCH_LOCK:
-        api = _get_api()
-        
-        data = None
-        error_msg = None
-        fmt_name = "zip"  # Default to ZIP since Garmin returns ZIP for FIT
-        
-        # Try all download formats
-        for fmt in [api.ActivityDownloadFormat.ORIGINAL, api.ActivityDownloadFormat.TCX, api.ActivityDownloadFormat.GPX, api.ActivityDownloadFormat.KML]:
-            try:
-                data = api.download_activity(activity_id, fmt)
-                if data:
-                    # For ORIGINAL format, Garmin returns ZIP - preserve it
-                    if fmt == api.ActivityDownloadFormat.ORIGINAL:
-                        fmt_name = "zip"
-                    # For other formats, Garmin returns plain file
-                    else:
-                        fmt_name = fmt.name.lower()
-                    break
-            except Exception as e:
-                error_msg = str(e)
-                continue
-        
-        # If download fails, get activity details as JSON
-        if not data:
-            try:
-                activity = api.get_activity(activity_id)
-                if activity:
-                    import json
-                    data = json.dumps(activity, indent=2, default=str).encode('utf-8')
-                    fmt_name = "json"
-                    error_msg = None
-            except Exception as e:
-                error_msg = str(e)
 
-    if not data:
-        return JSONResponse(
-            {"error": f"No se pudieron obtener datos. Error: {error_msg}"},
-            status_code=500
+    # Intenta primero con tokens locales
+    try:
+        with FETCH_LOCK:
+            api = _get_api()
+            data = None
+            fmt_name = "zip"
+            for fmt in [api.ActivityDownloadFormat.ORIGINAL, api.ActivityDownloadFormat.TCX, api.ActivityDownloadFormat.GPX]:
+                try:
+                    data = api.download_activity(activity_id, fmt)
+                    if data:
+                        fmt_name = "zip" if fmt == api.ActivityDownloadFormat.ORIGINAL else fmt.name.lower()
+                        break
+                except Exception:
+                    continue
+        if data:
+            return Response(
+                content=data,
+                media_type="application/octet-stream",
+                headers={"Content-Disposition": f'attachment; filename="activity_{activity_id}.{fmt_name}"'},
+            )
+    except Exception:
+        pass
+
+    # Fallback: proxy descarga al Railway
+    try:
+        proxy_url = f"{RAILWAY_FALLBACK_URL}/download/{activity_id}"
+        with _urllib.urlopen(proxy_url, timeout=30) as resp:
+            data = resp.read()
+        content_disp = resp.headers.get("Content-Disposition", f'attachment; filename="activity_{activity_id}.zip"')
+        return Response(
+            content=data,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": content_disp},
         )
+    except Exception as exc:
+        return JSONResponse({"error": f"No se pudo descargar: {exc}"}, status_code=503)
 
-    media_type = "application/octet-stream"
-    if fmt_name == "json":
-        media_type = "application/json"
-    
-    return Response(
-        content=data,
-        media_type=media_type,
-        headers={"Content-Disposition": f'attachment; filename="activity_{activity_id}.{fmt_name}"'}
-    )
+
+RAILWAY_FALLBACK_URL = os.getenv("RAILWAY_FALLBACK_URL", "https://garmin-coach-mcp-production.up.railway.app").rstrip("/")
+
+
+@mcp.custom_route("/activities", methods=["GET"])
+async def list_activities_web(request: Request) -> JSONResponse:
+    import urllib.request as _urllib
+    limit = int(request.query_params.get("limit", "30"))
+    limit = max(1, min(100, limit))
+
+    # Intenta primero con tokens locales
+    try:
+        with FETCH_LOCK:
+            api = _get_api()
+            activities, err = _optional_call_first(api, ("get_activities",), 0, limit)
+        if activities is not None:
+            result = []
+            for a in activities[:limit]:
+                if not isinstance(a, dict):
+                    continue
+                activity_type = a.get("activityType") or {}
+                type_key = activity_type.get("typeKey") if isinstance(activity_type, dict) else None
+                result.append({
+                    "activityId": a.get("activityId"),
+                    "activityName": a.get("activityName"),
+                    "startTimeLocal": a.get("startTimeLocal"),
+                    "activityType": type_key,
+                    "distanceKm": round((a.get("distance") or 0) / 1000, 2),
+                    "durationMin": round((a.get("duration") or 0) / 60, 1),
+                    "avgHr": a.get("averageHR"),
+                })
+            return JSONResponse({"activities": result, "source": "local"})
+    except Exception:
+        pass
+
+    # Fallback: proxy al servidor Railway que tiene tokens válidos
+    try:
+        proxy_url = f"{RAILWAY_FALLBACK_URL}/debug/activities"
+        with _urllib.urlopen(proxy_url, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+        acts = data.get("activities") or []
+        # debug/activities devuelve menos campos; rellenamos con 0 los que faltan
+        for a in acts:
+            a.setdefault("distanceKm", 0)
+            a.setdefault("durationMin", 0)
+            a.setdefault("avgHr", None)
+        return JSONResponse({"activities": acts, "source": "railway"})
+    except Exception as exc:
+        return JSONResponse({"error": f"Sin tokens locales y Railway no responde: {exc}"}, status_code=503)
 
 
 @mcp.custom_route("/debug/audit", methods=["GET"])
@@ -1359,7 +1344,12 @@ def _run_server() -> None:
     TOKEN_DIR.mkdir(parents=True, exist_ok=True)
     thread = threading.Thread(target=_background_refresh_loop, daemon=True)
     thread.start()
-    mcp.run(transport="http", host="0.0.0.0", port=PORT)
+    mcp.run(
+        transport="http",
+        host="0.0.0.0",
+        port=PORT,
+        middleware=[Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])],
+    )
 
 
 # === BEGIN GARMIN METRICS PATCH ===
