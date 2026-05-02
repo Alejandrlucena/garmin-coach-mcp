@@ -164,7 +164,7 @@ mcp = FastMCP(
         "Herramientas para leer métricas reales de Garmin Connect. "
         "Responde siempre en español y prioriza términos canónicos alineados con Garmin Connect en español. "
         "Usa 'Predisposición para entrenar', 'VFC', 'Puntuación de sueño', 'Carga aguda' y 'Estrés'. "
-        "NUNCA uses los acrónimos en inglés 'HRV', 'RHR' ni el término 'Training Readiness': usa siempre 'VFC', 'FC en reposo' y 'Predisposición para entrenar' respectivamente. "
+        "NUNCA uses los acrónimos en inglés 'HRV', 'RHR' ni los términos 'Training Readiness', 'Training Effect' o 'Stamina': usa siempre 'VFC', 'FC en reposo', 'Predisposición para entrenar', 'Efecto de entrenamiento' y 'Energía disponible' respectivamente. "
         "Mantén 'Body Battery' como nombre propio de Garmin; si ayuda, puedes aclarar entre paréntesis 'energía corporal'. "
         "Traduce estados como FAIR->Aceptable, MODERATE->Moderada, BALANCED->Equilibrado, OPTIMAL->Óptimo y LOW->Bajo/Baja según contexto. "
         "Para tiempo de recuperación, usa siempre primero training_readiness_recovery_answer_for_llm o, si no existe, training_readiness_recovery_safe_text. "
@@ -5015,12 +5015,12 @@ def _visible_metrics_running_like(bundle: dict[str, Any]) -> dict[str, Any]:
             "Temperatura mínima": _format_celsius(summary.get("minTemperature")),
             "Temperatura máxima": _format_celsius(summary.get("maxTemperature")),
         },
-        "Stamina": {
-            "Stamina mínima disponible": summary.get("minAvailableStamina"),
+        "Energía disponible": {
+            "Energía disponible mínima": summary.get("minAvailableStamina"),
         },
-        "Stamina potencial": {
-            "Stamina potencial al inicio": summary.get("beginPotentialStamina"),
-            "Stamina potencial al final": summary.get("endPotentialStamina"),
+        "Energía disponible potencial": {
+            "Energía disponible potencial al inicio": summary.get("beginPotentialStamina"),
+            "Energía disponible potencial al final": summary.get("endPotentialStamina"),
         },
         "Vueltas": _visible_laps_or_segments(bundle),
     }
@@ -5055,7 +5055,7 @@ def _visible_metrics_strength(bundle: dict[str, Any]) -> dict[str, Any]:
             "Tiempo de trabajo": _seconds_to_hms(active_time_s),
             "Tiempo de descanso": _seconds_to_hms(rest_time_s),
         },
-        "Training Effect": {
+        "Efecto de entrenamiento": {
             "Beneficio principal": _training_label_es(summary.get("trainingEffectLabel")),
             "Aeróbica": summary.get("trainingEffect"),
             "Anaeróbica": summary.get("anaerobicTrainingEffect"),
@@ -5153,8 +5153,8 @@ def _visible_metrics_swimming(bundle: dict[str, Any]) -> dict[str, Any]:
         },
         "Carga": {
             "Carga de ejercicio": summary.get("activityTrainingLoad"),
-            "Training Effect aeróbico": summary.get("trainingEffect"),
-            "Training Effect anaeróbico": summary.get("anaerobicTrainingEffect"),
+            "Efecto de entrenamiento aeróbico": summary.get("trainingEffect"),
+            "Efecto de entrenamiento anaeróbico": summary.get("anaerobicTrainingEffect"),
             "Beneficio principal": summary.get("trainingEffectLabel"),
         },
     }
@@ -5282,12 +5282,12 @@ def _visible_metrics_endurance_full(bundle: dict[str, Any]) -> dict[str, Any]:
             "Cómo te has sentido": raw_activity.get("userFeedback") or raw_activity.get("feel") or raw_activity.get("perceivedExerciseFeedback"),
             "Nivel de esfuerzo percibido": raw_activity.get("perceivedExerciseIntensity") or raw_activity.get("rpe") or raw_activity.get("userRpe"),
         },
-        "Stamina": {
+        "Energía disponible": {
             "Potencial inicial": summary.get("beginPotentialStamina"),
             "Potencial final": summary.get("endPotentialStamina"),
-            "Stamina mín.": summary.get("minAvailableStamina"),
+            "Energía disponible mín.": summary.get("minAvailableStamina"),
         },
-        "Training Effect": {
+        "Efecto de entrenamiento": {
             "Beneficio principal": _training_label_es(summary.get("trainingEffectLabel")),
             "Aeróbica": summary.get("trainingEffect"),
             "Anaeróbica": summary.get("anaerobicTrainingEffect"),
@@ -5699,7 +5699,7 @@ def _coach_build_takeaways(overview: dict[str, Any], day_metrics: dict[str, Any]
         if run_vr is not None:
             tips.append(f"Último ratio vertical endurance: {run_vr}")
         if run_stamina_end is not None:
-            tips.append(f"Stamina final de la última sesión endurance: {run_stamina_end}")
+            tips.append(f"Energía disponible final de la última sesión endurance: {run_stamina_end}")
 
     if latest_strength:
         strength_load = latest_strength.get("training_load")
@@ -5879,7 +5879,7 @@ def _decision_collect_reasons(ctx: dict[str, Any], latest_run: dict[str, Any] | 
         if run_te is not None:
             reasons.append(f"Último TE aeróbico endurance: {round(run_te, 1)}")
         if run_stamina_end is not None:
-            reasons.append(f"Stamina final endurance: {round(run_stamina_end)}")
+            reasons.append(f"Energía disponible final endurance: {round(run_stamina_end)}")
 
     if latest_strength:
         strength_load = _decision_num(latest_strength.get("training_load"))
@@ -7256,7 +7256,7 @@ _FRONTEND_EXTRA_ES_INSTRUCTIONS = (
     " Para cualquier respuesta visible para el usuario, prioriza siempre salida_frontend_es, resumen_frontend_es y metricas_frontend_es."
     " No cites ni reutilices raw_sources, códigos internos, type keys ni estados en inglés salvo que el usuario pida expresamente el dato bruto."
     " Usa exactamente el vocabulario visible de Garmin Connect en español: Body Battery, Predisposición para entrenar, Estado de VFC, Puntuación de sueño, Carga aguda, Estado de entreno, Tiempo de recuperación, Calorías, Pasos, Minutos de intensidad, Pisos y Estrés."
-    " NUNCA escribas 'HRV', 'RHR' ni 'Training Readiness' en la respuesta: usa 'VFC', 'FC en reposo' y 'Predisposición para entrenar'."
+    " NUNCA escribas 'HRV', 'RHR', 'Training Readiness', 'Training Effect' ni 'Stamina' en la respuesta: usa 'VFC', 'FC en reposo', 'Predisposición para entrenar', 'Efecto de entrenamiento' y 'Energía disponible'."
     " Para actividades, prioriza get_activity_visible_profile y visible_metrics frente a herramientas crudas."
 )
 try:
@@ -7466,8 +7466,8 @@ _STRICT_GARMIN_CONNECT_ES_TERMS = (
     " Prioriza estas formas exactas: Body Battery, Predisposición para entrenar, Estado de VFC, Puntuación de sueño, Estado de entreno, Carga aguda, Tiempo de recuperación, Estrés, Calorías, Pasos y Minutos de intensidad."
     " Evita estas reformulaciones salvo que el usuario las pida expresamente o las use primero: Variabilidad de la Frecuencia Cardíaca, Estado de Entrenamiento, Preparación para entrenar, Batería corporal."
     " No uses claves internas ni términos en inglés salvo que el usuario pida el dato bruto."
-    " NUNCA uses los acrónimos en inglés 'HRV', 'RHR' ni el término 'Training Readiness' en respuestas al usuario."
-    " Usa siempre: 'VFC' en lugar de 'HRV', 'FC en reposo' en lugar de 'RHR', y 'Predisposición para entrenar' en lugar de 'Training Readiness'."
+    " NUNCA uses los acrónimos en inglés 'HRV', 'RHR' ni los términos 'Training Readiness', 'Training Effect' o 'Stamina' en respuestas al usuario."
+    " Usa siempre: 'VFC' en lugar de 'HRV', 'FC en reposo' en lugar de 'RHR', 'Predisposición para entrenar' en lugar de 'Training Readiness', 'Efecto de entrenamiento' en lugar de 'Training Effect', y 'Energía disponible' en lugar de 'Stamina'."
 )
 
 try:
