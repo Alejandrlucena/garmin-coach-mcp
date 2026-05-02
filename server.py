@@ -164,6 +164,7 @@ mcp = FastMCP(
         "Herramientas para leer métricas reales de Garmin Connect. "
         "Responde siempre en español y prioriza términos canónicos alineados con Garmin Connect en español. "
         "Usa 'Predisposición para entrenar', 'VFC', 'Puntuación de sueño', 'Carga aguda' y 'Estrés'. "
+        "NUNCA uses los acrónimos en inglés 'HRV', 'RHR' ni el término 'Training Readiness': usa siempre 'VFC', 'FC en reposo' y 'Predisposición para entrenar' respectivamente. "
         "Mantén 'Body Battery' como nombre propio de Garmin; si ayuda, puedes aclarar entre paréntesis 'energía corporal'. "
         "Traduce estados como FAIR->Aceptable, MODERATE->Moderada, BALANCED->Equilibrado, OPTIMAL->Óptimo y LOW->Bajo/Baja según contexto. "
         "Para tiempo de recuperación, usa siempre primero training_readiness_recovery_answer_for_llm o, si no existe, training_readiness_recovery_safe_text. "
@@ -6646,7 +6647,7 @@ def _compact_wellness_for_range(api, target_date: str) -> dict:
 @mcp.tool
 def get_daily_wellness(target_date: str) -> dict:
     """Obtiene métricas completas de un día específico.
-    Incluye: pasos, distancia, calorías, FC en reposo, estrés, Body Battery,VR, sommeil, HRV y más.
+    Incluye: pasos, distancia, calorías, FC en reposo, estrés, Body Battery, VFC y más.
     Formato de fecha: YYYY-MM-DD (ejemplo: 2017-06-15)
     """
     parsed_date = _parse_date(target_date)
@@ -7255,6 +7256,7 @@ _FRONTEND_EXTRA_ES_INSTRUCTIONS = (
     " Para cualquier respuesta visible para el usuario, prioriza siempre salida_frontend_es, resumen_frontend_es y metricas_frontend_es."
     " No cites ni reutilices raw_sources, códigos internos, type keys ni estados en inglés salvo que el usuario pida expresamente el dato bruto."
     " Usa exactamente el vocabulario visible de Garmin Connect en español: Body Battery, Predisposición para entrenar, Estado de VFC, Puntuación de sueño, Carga aguda, Estado de entreno, Tiempo de recuperación, Calorías, Pasos, Minutos de intensidad, Pisos y Estrés."
+    " NUNCA escribas 'HRV', 'RHR' ni 'Training Readiness' en la respuesta: usa 'VFC', 'FC en reposo' y 'Predisposición para entrenar'."
     " Para actividades, prioriza get_activity_visible_profile y visible_metrics frente a herramientas crudas."
 )
 try:
@@ -7464,6 +7466,8 @@ _STRICT_GARMIN_CONNECT_ES_TERMS = (
     " Prioriza estas formas exactas: Body Battery, Predisposición para entrenar, Estado de VFC, Puntuación de sueño, Estado de entreno, Carga aguda, Tiempo de recuperación, Estrés, Calorías, Pasos y Minutos de intensidad."
     " Evita estas reformulaciones salvo que el usuario las pida expresamente o las use primero: Variabilidad de la Frecuencia Cardíaca, Estado de Entrenamiento, Preparación para entrenar, Batería corporal."
     " No uses claves internas ni términos en inglés salvo que el usuario pida el dato bruto."
+    " NUNCA uses los acrónimos en inglés 'HRV', 'RHR' ni el término 'Training Readiness' en respuestas al usuario."
+    " Usa siempre: 'VFC' en lugar de 'HRV', 'FC en reposo' en lugar de 'RHR', y 'Predisposición para entrenar' en lugar de 'Training Readiness'."
 )
 
 try:
