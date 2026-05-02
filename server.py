@@ -7468,6 +7468,7 @@ _STRICT_GARMIN_CONNECT_ES_TERMS = (
     " No uses claves internas ni términos en inglés salvo que el usuario pida el dato bruto."
     " NUNCA uses los acrónimos en inglés 'HRV', 'RHR' ni los términos 'Training Readiness', 'Training Effect' o 'Stamina' en respuestas al usuario."
     " Usa siempre: 'VFC' en lugar de 'HRV', 'FC en reposo' en lugar de 'RHR', 'Predisposición para entrenar' en lugar de 'Training Readiness', 'Efecto de entrenamiento' en lugar de 'Training Effect', y 'Energía disponible' en lugar de 'Stamina'."
+    " NUNCA uses términos híbridos español-inglés como 'sobre-reach', 'over-reach' o 'overreaching': usa 'sobreentrenamiento', 'sobrecarga' o 'exceso de carga' según el contexto."
 )
 
 try:
