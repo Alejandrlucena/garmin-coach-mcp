@@ -7404,6 +7404,73 @@ def set_gear_default(activity_type: str, gear_uuid: str, is_default: bool = True
         raise RuntimeError(err)
     return {"ok": True, "activity_type": activity_type, "gear_uuid": gear_uuid, "is_default": is_default, "response": data}
 
+
+@mcp.tool
+def get_spo2_data(target_date: str = None) -> dict:
+    """Datos de oximetría de pulso (SpO2) del día.
+    Muestra el nivel de saturación de oxígeno en sangre registrado por el sensor del reloj.
+    Formato fecha: YYYY-MM-DD (por defecto hoy).
+    """
+    parsed = _parse_date(target_date)
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_spo2_data", "get_pulse_ox_data"), parsed)
+    if data is None:
+        raise RuntimeError(err or f"No se pudieron obtener los datos de SpO2 del día {parsed}")
+    return {"date": parsed, "spo2": data}
+
+
+@mcp.tool
+def get_respiration_data(target_date: str = None) -> dict:
+    """Frecuencia respiratoria registrada durante el día y el sueño.
+    Útil para detectar tendencias de recuperación y estado de forma aeróbica.
+    Formato fecha: YYYY-MM-DD (por defecto hoy).
+    """
+    parsed = _parse_date(target_date)
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_respiration_data",), parsed)
+    if data is None:
+        raise RuntimeError(err or f"No se pudieron obtener los datos de respiración del día {parsed}")
+    return {"date": parsed, "respiration": data}
+
+
+@mcp.tool
+def get_hydration_data(target_date: str = None) -> dict:
+    """Registro de hidratación del día (vasos de agua u oz registrados manualmente).
+    Muestra el objetivo diario y el progreso hasta ese momento.
+    Formato fecha: YYYY-MM-DD (por defecto hoy).
+    """
+    parsed = _parse_date(target_date)
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_hydration_data",), parsed)
+    if data is None:
+        raise RuntimeError(err or f"No se pudieron obtener los datos de hidratación del día {parsed}")
+    return {"date": parsed, "hydration": data}
+
+
+@mcp.tool
+def get_body_composition(
+    start_date: str = None,
+    end_date: str = None,
+) -> dict:
+    """Composición corporal en un rango de fechas: peso, IMC y porcentaje de grasa.
+    Sin fechas devuelve los últimos 30 días. Formato: YYYY-MM-DD.
+    """
+    ed = _parse_date(end_date) if end_date else _today_local().isoformat()
+    sd = _parse_date(start_date) if start_date else (
+        date.fromisoformat(ed) - timedelta(days=29)
+    ).isoformat()
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(
+            api, ("get_body_composition", "get_weight_data"), sd, ed
+        )
+    if data is None:
+        raise RuntimeError(err or "No se pudo obtener la composición corporal")
+    return {"start_date": sd, "end_date": ed, "body_composition": data}
+
 # === EXTRA API TOOLS END ===
 
 # === HISTORICAL DATA TOOLS END ===

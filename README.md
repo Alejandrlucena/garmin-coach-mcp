@@ -1,6 +1,6 @@
 # Garmin Coach MCP
 
-Servidor MCP que conecta Garmin Connect con Claude y ChatGPT — 67 herramientas, datos en tiempo real · by AlejandrLucena
+Servidor MCP que conecta Garmin Connect con Claude y ChatGPT — 71 herramientas, datos en tiempo real · by AlejandrLucena
 
 ---
 
@@ -8,7 +8,7 @@ Servidor MCP que conecta Garmin Connect con Claude y ChatGPT — 67 herramientas
 
 Servidor FastMCP que autentica contra Garmin Connect, descarga métricas y actividades reales, y las expone como tools MCP para que Claude las use como entrenador, analista y apoyo nutricional.
 
-Se despliega en Railway (el servidor vive ahí aunque el Mac esté apagado) y también puede correr localmente para alimentar el [visualizador web](https://github.com/Alejandrlucena/garmin-entreno).
+Se despliega en Railway (el servidor vive ahí aunque el Mac esté apagado) y también puede correr localmente para alimentar el [visualizador web](https://github.com/Alejandrlucena/garmin-running).
 
 ---
 
@@ -105,7 +105,7 @@ Solo se permite la clave `driveUrl`. No se almacena ningún dato de usuario ni c
 
 ## Uso con el visualizador web
 
-El visualizador [garmin-entreno](https://github.com/Alejandrlucena/garmin-entreno) tiene un botón **🔌 Conector** que carga el `.fit` con un clic y renderiza la tabla directamente. Cada usuario configura la URL de su propio servidor en **⚙ Configurar**.
+El visualizador [garmin-running](https://github.com/Alejandrlucena/garmin-running) tiene un botón **🔌 Conector** que carga el `.fit` con un clic y renderiza la tabla directamente. Cada usuario configura la URL de su propio servidor en **⚙ Configurar**.
 
 - Despliega este repo en Railway, copia la URL que te dé y pégala en **⚙**
 - O arranca el servidor en local (`http://localhost:8000`) — sirve el `index.html` directamente, sin problemas de CORS
