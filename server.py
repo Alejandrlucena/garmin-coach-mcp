@@ -184,6 +184,63 @@ _GARMIN_ES: dict[str, str] = {
     "soccer": "Fútbol",
     "other": "Otro",
 
+    # Workout — tipos de paso
+    "WARMUP": "Calentamiento",
+    "COOLDOWN": "Vuelta a la calma",
+    "INTERVAL": "Intervalo",
+    "RECOVERY": "Recuperación",
+    "REST": "Descanso",
+    "RECOVER": "Recuperación",
+    "REPEAT": "Repetición",
+    "REPEAT_STEP": "Bloque de repetición",
+    "ACTIVE": "Activo",
+
+    # Workout — tipos de objetivo (target)
+    "NO_TARGET": "Sin objetivo",
+    "OPEN": "Abierto",
+    "LAP_BUTTON": "Botón vuelta",
+    "HEART_RATE": "Frecuencia cardíaca",
+    "POWER": "Potencia",
+    "CADENCE": "Cadencia",
+    "PACE": "Ritmo",
+    "SPEED": "Velocidad",
+    "GRADE": "Pendiente",
+    "ITERATIONS": "Repeticiones",
+
+    # Workout — tipos de duración
+    "TIME": "Tiempo",
+    "REPS": "Repeticiones",
+    "FIXED_REST": "Descanso fijo",
+
+    # Workout — deportes
+    "RUNNING": "Correr",
+    "CYCLING": "Ciclismo",
+    "SWIMMING": "Natación",
+    "FITNESS_EQUIPMENT": "Máquina de fitness",
+    "STRENGTH_TRAINING": "Fuerza",
+    "CARDIO_TRAINING": "Cardio",
+    "WALK": "Caminar",
+
+    # Workout — estado en calendario
+    "SCHEDULED": "Planificado",
+    "SKIPPED": "Omitido",
+    "MISSED": "No realizado",
+
+    # Calendario — tipo de elemento
+    "workout": "Entrenamiento",
+    "race": "Carrera",
+    "note": "Nota",
+    "garmincoach": "Garmin Coach",
+
+    # Nutrición — comidas
+    "BREAKFAST": "Desayuno",
+    "LUNCH": "Almuerzo",
+    "DINNER": "Cena",
+    "SNACK": "Tentempié",
+    "WATER": "Agua",
+    "SUPPLEMENT": "Suplemento",
+    "ANYTIME": "En cualquier momento",
+
     # Genéricos
     "UNKNOWN": "Desconocido",
     "NONE": "Sin datos",
@@ -7562,6 +7619,213 @@ def get_body_composition(
     if data is None:
         raise RuntimeError(err or "No se pudo obtener la composición corporal")
     return {"start_date": sd, "end_date": ed, "body_composition": data}
+
+
+# === WORKOUT & CALENDAR TOOLS ===
+
+@mcp.tool
+def get_scheduled_workouts(year: int = None, month: int = None) -> dict:
+    """Entrenamientos planificados en el calendario de Garmin Connect para un mes.
+    Por defecto usa el mes actual. month: 1-12 (enero=1).
+    Incluye el deporte, nombre, fecha y ID para obtener el detalle completo.
+    """
+    today = _today_local()
+    y = int(year) if year else today.year
+    m = int(month) if month else today.month
+    # La API de Garmin usa mes 0-indexado (enero=0)
+    with FETCH_LOCK:
+        api = _get_api()
+        try:
+            # Intentar con el método de la librería si existe, si no usar connectapi
+            if hasattr(api, "get_workouts_calendar"):
+                data = api.get_workouts_calendar(y, m)
+            else:
+                data = api.connectapi(f"/calendar-service/year/{y}/month/{m - 1}")
+        except Exception as e:
+            raise RuntimeError(f"No se pudieron obtener los entrenamientos planificados de {y}/{m:02d}: {e}")
+    # Filtrar solo elementos tipo workout del calendario
+    items = data if isinstance(data, list) else (data.get("calendarItems") or data.get("items") or [data] if isinstance(data, dict) else [])
+    workouts = [i for i in items if isinstance(i, dict) and i.get("itemType", "").lower() in ("workout", "garmincoach", "")]
+    return {
+        "year": y,
+        "month": m,
+        "calendar_raw": data,
+        "workouts_this_month": workouts,
+        "total_items": len(items),
+    }
+
+
+@mcp.tool
+def get_todays_workout() -> dict:
+    """Entrenamiento planificado para hoy en Garmin Connect.
+    Acceso rápido sin necesidad de especificar fecha.
+    """
+    today = _today_local()
+    with FETCH_LOCK:
+        api = _get_api()
+        try:
+            if hasattr(api, "get_workouts_calendar"):
+                data = api.get_workouts_calendar(today.year, today.month)
+            else:
+                data = api.connectapi(f"/calendar-service/year/{today.year}/month/{today.month - 1}")
+        except Exception as e:
+            raise RuntimeError(f"No se pudo obtener el calendario de hoy: {e}")
+    items = data if isinstance(data, list) else (data.get("calendarItems") or data.get("items") or [])
+    today_iso = today.isoformat()
+    todays = [i for i in items if isinstance(i, dict) and str(i.get("date", "")).startswith(today_iso)]
+    return {
+        "date": today_iso,
+        "todays_items": todays,
+        "has_workout": any(i.get("itemType", "").lower() in ("workout", "garmincoach") for i in todays),
+        "calendar_raw": data,
+    }
+
+
+@mcp.tool
+def get_workout_library(start: int = 0, limit: int = 20) -> dict:
+    """Biblioteca de entrenamientos guardados en Garmin Connect.
+    Devuelve nombre, deporte e ID de cada entrenamiento guardado.
+    start: offset para paginación. limit: máximo de resultados (máx 100).
+    """
+    limit = max(1, min(100, int(limit)))
+    with FETCH_LOCK:
+        api = _get_api()
+        try:
+            if hasattr(api, "get_workouts"):
+                data = api.get_workouts(start, limit)
+            else:
+                data = api.connectapi(f"/workout-service/workouts?start={start}&limit={limit}&myWorkoutsOnly=true&sharedWorkoutsOnly=false")
+        except Exception as e:
+            raise RuntimeError(f"No se pudo obtener la biblioteca de entrenamientos: {e}")
+    return {"start": start, "limit": limit, "workouts": data}
+
+
+@mcp.tool
+def get_workout_detail(workout_id: str) -> dict:
+    """Detalle completo de un entrenamiento: pasos, series, zonas de FC/potencia y objetivos.
+    workout_id: ID numérico del entrenamiento (obtenible con get_workout_library o get_scheduled_workouts).
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        try:
+            if hasattr(api, "get_workout_by_id"):
+                data = api.get_workout_by_id(workout_id)
+            else:
+                data = api.connectapi(f"/workout-service/workout/{workout_id}")
+        except Exception as e:
+            raise RuntimeError(f"No se pudo obtener el detalle del entrenamiento {workout_id}: {e}")
+    return {"workout_id": workout_id, "workout": data}
+
+
+@mcp.tool
+def get_training_plans() -> dict:
+    """Planes de entrenamiento activos en Garmin Connect.
+    Incluye el nombre del plan, deporte, fase actual y fechas.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        try:
+            if hasattr(api, "get_training_plans"):
+                data = api.get_training_plans()
+            else:
+                data = api.connectapi("/trainingplan-service/trainingplan/plans")
+        except Exception as e:
+            raise RuntimeError(f"No se pudieron obtener los planes de entrenamiento: {e}")
+    return {"training_plans": data}
+
+
+@mcp.tool
+def get_training_plan_detail(plan_id: str) -> dict:
+    """Detalle completo de un plan de entrenamiento: fases, semanas y workouts programados.
+    plan_id: ID del plan (obtenible con get_training_plans).
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data = None
+        for path in (f"/trainingplan-service/trainingplan/phased/{plan_id}",
+                     f"/trainingplan-service/trainingplan/fbt-adaptive/{plan_id}"):
+            try:
+                data = api.connectapi(path)
+                if data:
+                    break
+            except Exception:
+                continue
+    if data is None:
+        raise RuntimeError(f"No se pudo obtener el detalle del plan {plan_id}")
+    return {"plan_id": plan_id, "training_plan": data}
+
+
+@mcp.tool
+def schedule_workout(workout_id: str, target_date: str) -> dict:
+    """Planifica un entrenamiento de la biblioteca en una fecha concreta.
+    workout_id: ID del entrenamiento a programar.
+    target_date: fecha en formato YYYY-MM-DD.
+    """
+    parsed = _parse_date(target_date)
+    with FETCH_LOCK:
+        api = _get_api()
+        try:
+            if hasattr(api, "schedule_workout"):
+                data = api.schedule_workout(workout_id, parsed)
+            else:
+                data = api.garth.post("connectapi", f"/workout-service/schedule/{workout_id}", json={"date": parsed})
+        except Exception as e:
+            raise RuntimeError(f"No se pudo planificar el entrenamiento {workout_id} para {parsed}: {e}")
+    return {"ok": True, "workout_id": workout_id, "date": parsed, "response": data}
+
+
+@mcp.tool
+def unschedule_workout(schedule_id: str) -> dict:
+    """Elimina un entrenamiento de la planificación por su schedule ID.
+    schedule_id: ID de la entrada en el calendario (campo scheduledWorkoutId en get_scheduled_workouts).
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        try:
+            if hasattr(api, "unschedule_workout"):
+                data = api.unschedule_workout(schedule_id)
+            else:
+                data = api.garth.delete("connectapi", f"/workout-service/schedule/{schedule_id}")
+        except Exception as e:
+            raise RuntimeError(f"No se pudo eliminar el workout planificado {schedule_id}: {e}")
+    return {"ok": True, "schedule_id": schedule_id, "response": data}
+
+
+@mcp.tool
+def get_nutrition_log(target_date: str = None) -> dict:
+    """Registro de alimentación del día: alimentos, macronutrientes y calorías.
+    Requiere que el usuario registre alimentos en Garmin Connect o la app.
+    Formato fecha: YYYY-MM-DD (por defecto hoy).
+    """
+    parsed = _parse_date(target_date)
+    with FETCH_LOCK:
+        api = _get_api()
+        food_log, meals, settings = None, None, None
+        for method, path in (
+            ("food_log",    f"/nutrition-service/food/logs/{parsed}"),
+            ("meals",       f"/nutrition-service/meals/{parsed}"),
+            ("settings",    f"/nutrition-service/settings/{parsed}"),
+        ):
+            try:
+                result = api.connectapi(path)
+                if method == "food_log":
+                    food_log = result
+                elif method == "meals":
+                    meals = result
+                else:
+                    settings = result
+            except Exception:
+                pass
+    if food_log is None and meals is None:
+        raise RuntimeError(f"No hay datos de nutrición para {parsed}. Asegúrate de registrar alimentos en Garmin Connect.")
+    return {
+        "date": parsed,
+        "food_log": food_log,
+        "meals": meals,
+        "settings": settings,
+    }
+
+# === WORKOUT & CALENDAR TOOLS END ===
 
 # === EXTRA API TOOLS END ===
 
