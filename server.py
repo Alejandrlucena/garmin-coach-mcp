@@ -104,9 +104,101 @@ _GARMIN_ES: dict[str, str] = {
     "NEGATIVE_STRENUOUS_EXERCISE": "Ejercicio intenso previo",
     "HARD_EXERCISE_NEG_FAIR_OR_POOR_SLEEP": "Entrenamiento duro + mal sueño",
 
+    # Estados genéricos de nivel / calidad
+    "OPTIMAL": "Óptimo",
+    "MODERATE": "Moderado",
+    "HIGH": "Alto",
+    "NORMAL": "Normal",
+    "ABOVE_NORMAL": "Por encima de lo normal",
+    "BELOW_NORMAL": "Por debajo de lo normal",
+
+    # Tendencias (composición corporal, peso, VO2max…)
+    "STABLE": "Estable",
+    "INCREASING": "En aumento",
+    "DECREASING": "En descenso",
+    "IMPROVED": "Mejorado",
+    "DECLINED": "Empeorado",
+    "UNCHANGED": "Sin cambios",
+    "INCREASED": "Aumentado",
+    "DECREASED": "Disminuido",
+
+    # Estado de retos / objetivos
+    "ACTIVE": "Activo",
+    "INACTIVE": "Inactivo",
+    "COMPLETED": "Completado",
+    "IN_PROGRESS": "En progreso",
+    "PENDING": "Pendiente",
+    "FAILED": "No completado",
+    "AVAILABLE": "Disponible",
+
+    # Sistema de unidades
+    "METRIC": "Métrico",
+    "STATUTE": "Imperial",
+    "MARINE": "Náutico",
+
+    # Perfil / género
+    "MALE": "Masculino",
+    "FEMALE": "Femenino",
+
+    # SPO2
+    "STANDARD": "Estándar",
+    "CONTINUOUS": "Continuo",
+    "SPOT_CHECK": "Medición puntual",
+    "INTERRUPTED": "Interrumpido",
+    "HIGH_ALTITUDE": "Altitud elevada",
+    "ENABLED": "Activo",
+    "DISABLED": "Desactivado",
+
+    # Respiración
+    "TACHYPNEA": "Taquipnea",
+    "BRADYPNEA": "Bradipnea",
+
+    # Tipos de actividad adicionales
+    "running": "Correr",
+    "cycling": "Ciclismo",
+    "walking": "Caminar",
+    "hiking": "Senderismo",
+    "swimming": "Natación",
+    "trail_running": "Trail running",
+    "road_biking": "Ciclismo en carretera",
+    "indoor_cycling": "Ciclismo indoor",
+    "mountain_biking": "Ciclismo de montaña",
+    "virtual_ride": "Ciclismo virtual",
+    "open_water_swimming": "Natación en aguas abiertas",
+    "pool_swimming": "Natación en piscina",
+    "cardio": "Cardio",
+    "elliptical": "Elíptica",
+    "track_running": "Carrera en pista",
+    "multi_sport": "Multideporte",
+    "triathlon": "Triatlón",
+    "yoga": "Yoga",
+    "pilates": "Pilates",
+    "tennis": "Tenis",
+    "golf": "Golf",
+    "rowing": "Remo",
+    "cross_country_skiing": "Esquí de fondo",
+    "skiing": "Esquí alpino",
+    "snowboarding": "Snowboard",
+    "basketball": "Baloncesto",
+    "football": "Fútbol americano",
+    "soccer": "Fútbol",
+    "other": "Otro",
+
     # Genéricos
     "UNKNOWN": "Desconocido",
     "NONE": "Sin datos",
+    "NO_DATA": "Sin datos",
+    "POSITIVE": "Positivo",
+    "NEGATIVE": "Negativo",
+    "NEUTRAL": "Neutral",
+    "ASCENDING": "Ascendente",
+    "DESCENDING": "Descendente",
+    "WEEKLY": "Semanal",
+    "DAILY": "Diario",
+    "DISTANCE": "Distancia",
+    "DURATION": "Duración",
+    "CALORIES": "Calorías",
+    "STEPS": "Pasos",
 }
 
 
