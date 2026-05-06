@@ -1105,29 +1105,36 @@ async def save_web_config(request: Request) -> JSONResponse:
 async def list_activities_web(request: Request) -> JSONResponse:
     import urllib.request as _urllib
     limit = int(request.query_params.get("limit", "30"))
-    limit = max(1, min(100, limit))
+    limit = max(1, min(500, limit))
+    start_date = request.query_params.get("start_date", "").strip()  # YYYY-MM-DD
+    end_date = request.query_params.get("end_date", "").strip()      # YYYY-MM-DD
+
+    def _normalize(a: dict) -> dict:
+        activity_type = a.get("activityType") or {}
+        type_key = activity_type.get("typeKey") if isinstance(activity_type, dict) else None
+        return {
+            "activityId": a.get("activityId"),
+            "activityName": a.get("activityName"),
+            "startTimeLocal": a.get("startTimeLocal"),
+            "activityType": type_key,
+            "distanceKm": round((a.get("distance") or 0) / 1000, 2),
+            "durationMin": round((a.get("duration") or 0) / 60, 1),
+            "avgHr": a.get("averageHR"),
+        }
 
     # Intenta primero con tokens locales
     try:
         with FETCH_LOCK:
             api = _get_api()
-            activities, err = _optional_call_first(api, ("get_activities",), 0, limit)
+            if start_date:
+                end = end_date if end_date else date.today().isoformat()
+                activities = api.get_activities_by_date(start_date, end, None)
+            else:
+                activities, _ = _optional_call_first(api, ("get_activities",), 0, limit)
         if activities is not None:
-            result = []
-            for a in activities[:limit]:
-                if not isinstance(a, dict):
-                    continue
-                activity_type = a.get("activityType") or {}
-                type_key = activity_type.get("typeKey") if isinstance(activity_type, dict) else None
-                result.append({
-                    "activityId": a.get("activityId"),
-                    "activityName": a.get("activityName"),
-                    "startTimeLocal": a.get("startTimeLocal"),
-                    "activityType": type_key,
-                    "distanceKm": round((a.get("distance") or 0) / 1000, 2),
-                    "durationMin": round((a.get("duration") or 0) / 60, 1),
-                    "avgHr": a.get("averageHR"),
-                })
+            result = [_normalize(a) for a in activities if isinstance(a, dict)]
+            if not start_date:
+                result = result[:limit]
             return JSONResponse({"activities": result, "source": "local"})
     except Exception:
         pass
@@ -7242,6 +7249,160 @@ def get_device_last_used() -> dict:
     if data is None:
         raise RuntimeError(err or "No se pudo obtener el último dispositivo usado")
     return {"device_last_used": data}
+
+
+@mcp.tool
+def get_gear_stats(gear_uuid: str) -> dict:
+    """Estadísticas de uso de una pieza de material concreto (zapatillas, bicicleta…).
+    Devuelve actividades totales, distancia acumulada y tiempo de uso.
+    gear_uuid: identificador UUID del material (obtenible con get_gear).
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_gear_stats",), gear_uuid)
+    if data is None:
+        raise RuntimeError(err or f"No se pudieron obtener las estadísticas del material {gear_uuid}")
+    return {"gear_uuid": gear_uuid, "stats": data}
+
+
+@mcp.tool
+def get_gear_defaults() -> dict:
+    """Material por defecto asignado a cada tipo de actividad (correr, ciclismo, etc.).
+    Útil para saber qué zapatilla o bici tiene Garmin asignada por defecto en cada deporte.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        profile, _ = _optional_call_first(api, ("get_user_profile",))
+        profile_number = None
+        if isinstance(profile, dict):
+            profile_number = (
+                (profile.get("userData") or {}).get("profileNumber")
+                or (profile.get("userData") or {}).get("id")
+                or profile.get("profileNumber")
+                or profile.get("id")
+            )
+        if profile_number is None:
+            raise RuntimeError("No se pudo obtener el número de perfil de usuario")
+        data, err = _optional_call_first(api, ("get_gear_defaults",), profile_number)
+    if data is None:
+        raise RuntimeError(err or "No se pudieron obtener los materiales por defecto")
+    return {"profile_number": profile_number, "gear_defaults": data}
+
+
+@mcp.tool
+def get_daily_weigh_ins(target_date: str = None) -> dict:
+    """Todos los pesajes registrados en un día concreto.
+    Útil cuando hay varios registros en el mismo día.
+    Formato fecha: YYYY-MM-DD (por defecto hoy).
+    """
+    parsed = _parse_date(target_date)
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_daily_weigh_ins",), parsed)
+    if data is None:
+        raise RuntimeError(err or f"No se pudieron obtener los pesajes del día {parsed}")
+    return {"date": parsed, "daily_weigh_ins": data}
+
+
+@mcp.tool
+def get_inprogress_virtual_challenges(start: int = 1, limit: int = 20) -> dict:
+    """Retos virtuales en curso en Garmin Connect (por ejemplo Garmin Challenges de km).
+    start: índice inicial (paginación). limit: máximo de resultados.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_inprogress_virtual_challenges",), start, limit)
+    if data is None:
+        raise RuntimeError(err or "No se pudieron obtener los retos virtuales en curso")
+    return {"start": start, "limit": limit, "inprogress_virtual_challenges": data}
+
+
+@mcp.tool
+def get_non_completed_badge_challenges(start: int = 1, limit: int = 20) -> dict:
+    """Retos de insignias que aún no se han completado.
+    Complementa get_badge_challenges mostrando los pendientes.
+    start: índice inicial (paginación). limit: máximo de resultados.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_non_completed_badge_challenges",), start, limit)
+    if data is None:
+        raise RuntimeError(err or "No se pudieron obtener los retos de insignias pendientes")
+    return {"start": start, "limit": limit, "non_completed_badge_challenges": data}
+
+
+@mcp.tool
+def get_device_alarms() -> dict:
+    """Alarmas configuradas en los dispositivos Garmin vinculados a la cuenta.
+    Devuelve las alarmas activas y sus configuraciones.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("get_device_alarms",))
+    if data is None:
+        raise RuntimeError(err or "No se pudieron obtener las alarmas del dispositivo")
+    return {"device_alarms": data}
+
+
+@mcp.tool
+def get_user_profile_info() -> dict:
+    """Información básica del perfil de usuario: nombre completo y sistema de unidades.
+    Útil para saber si Garmin trabaja en km/kg o millas/libras.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        full_name, name_err = _optional_call_first(api, ("get_full_name",))
+        unit_system, unit_err = _optional_call_first(api, ("get_unit_system",))
+    return {
+        "full_name": full_name,
+        "unit_system": unit_system,
+        "errors": {k: v for k, v in {"name": name_err, "units": unit_err}.items() if v},
+    }
+
+
+@mcp.tool
+def delete_weigh_in(weight_pk: str, target_date: str) -> dict:
+    """Elimina un pesaje concreto por su clave primaria.
+    weight_pk: identificador del pesaje (campo weightPk de get_weigh_ins o get_daily_weigh_ins).
+    target_date: fecha del pesaje en formato YYYY-MM-DD.
+    """
+    parsed = _parse_date(target_date)
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("delete_weigh_in",), weight_pk, parsed)
+    if data is None and err:
+        raise RuntimeError(err)
+    return {"ok": True, "weight_pk": weight_pk, "date": parsed, "response": data}
+
+
+@mcp.tool
+def delete_weigh_ins(target_date: str, delete_all: bool = False) -> dict:
+    """Elimina los pesajes de una fecha concreta.
+    delete_all=True elimina todos los registros del día; False elimina solo el más reciente.
+    target_date: fecha en formato YYYY-MM-DD.
+    """
+    parsed = _parse_date(target_date)
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("delete_weigh_ins",), parsed, delete_all)
+    if data is None and err:
+        raise RuntimeError(err)
+    return {"ok": True, "date": parsed, "delete_all": delete_all, "response": data}
+
+
+@mcp.tool
+def set_gear_default(activity_type: str, gear_uuid: str, is_default: bool = True) -> dict:
+    """Asigna (o desasigna) una pieza de material como predeterminada para un tipo de actividad.
+    activity_type: tipo de actividad Garmin (p.ej. 'running', 'cycling').
+    gear_uuid: UUID del material (obtenible con get_gear).
+    is_default: True para asignar como predeterminado, False para quitar esa asignación.
+    """
+    with FETCH_LOCK:
+        api = _get_api()
+        data, err = _optional_call_first(api, ("set_gear_default",), activity_type, gear_uuid, is_default)
+    if data is None and err:
+        raise RuntimeError(err)
+    return {"ok": True, "activity_type": activity_type, "gear_uuid": gear_uuid, "is_default": is_default, "response": data}
 
 # === EXTRA API TOOLS END ===
 

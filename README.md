@@ -1,6 +1,6 @@
 # Garmin Coach MCP
 
-Servidor MCP que conecta Garmin Connect con Claude y ChatGPT — 57 herramientas, datos en tiempo real · by AlejandrLucena
+Servidor MCP que conecta Garmin Connect con Claude y ChatGPT — 67 herramientas, datos en tiempo real · by AlejandrLucena
 
 ---
 
