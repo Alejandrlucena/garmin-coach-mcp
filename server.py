@@ -1856,7 +1856,7 @@ def _render_dashboard(request: "Request") -> str:
     )
 
     extra_head = (
-        '<meta http-equiv="refresh" content="5">'
+        '<meta http-equiv="refresh" content="1">'
         '<style>'
         '.rows{display:flex;flex-direction:column;gap:10px}'
         '.row{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;'
