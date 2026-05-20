@@ -1635,7 +1635,8 @@ def _dashboard_status() -> dict[str, Any]:
     server_ok = True
 
     # 2. Garmin connected: tokens exist on disk or in env var, and last refresh worked.
-    has_tokens = TOKEN_FILE.exists() or bool(GARMIN_TOKENS_JSON)
+    live_tokens = os.getenv("GARMIN_TOKENS_JSON", "").strip()
+    has_tokens = TOKEN_FILE.exists() or bool(live_tokens)
     garmin_email = os.getenv("GARMIN_EMAIL", "").strip() or None
     with CACHE_LOCK:
         cache_status = CACHE.get("status")
