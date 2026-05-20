@@ -1802,10 +1802,9 @@ def _render_dashboard(request: "Request") -> str:
         ))
     else:
         rows.append(row(
-            False,
-            "Claude sin conectar",
-            "Aún no se ha visto ninguna petición a /mcp desde Claude",
-            '<a href="#guide-claude"><button type="button" class="secondary">Cómo conectar</button></a>',
+            True,
+            "Claude listo para conectar",
+            "El servidor MCP está esperando conexiones. Cuando lo conectes desde tu IA, aparecerá aquí.",
         ))
 
     # ------ Quick actions ------
@@ -1857,7 +1856,7 @@ def _render_dashboard(request: "Request") -> str:
     )
 
     extra_head = (
-        '<meta http-equiv="refresh" content="1">'
+        '<meta http-equiv="refresh" content="5">'
         '<style>'
         '.rows{display:flex;flex-direction:column;gap:10px}'
         '.row{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;'
