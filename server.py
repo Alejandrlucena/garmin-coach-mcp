@@ -2513,6 +2513,7 @@ async def login_result(request: Request) -> Response:
              f'<pre id="env-block">{_html.escape(railway_block)}</pre>'
              '<button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'env-block\').innerText);this.innerText=\'Copiado ✓\'">Copiar para Railway</button>'
              '<div class="success" style="margin-top:16px">Después de guardar en Railway, esta página se recargará sola cuando el despliegue esté activo ✅</div>'
+             '<a href="/" style="display:inline-block;margin-top:16px"><button type="button" class="secondary">← Volver al panel</button></a>'
              '<script>'
              'setTimeout(function(){'
              'var t=setInterval(function(){'
@@ -2528,8 +2529,6 @@ async def login_result(request: Request) -> Response:
             f'<pre id="mcp-url">{_html.escape(mcp_url)}</pre>'
             '<button type="button" class="secondary" onclick="navigator.clipboard.writeText(document.getElementById(\'mcp-url\').innerText);this.innerText=\'Copiado ✓\'">Copiar URL del conector</button>'
         )
-
-    parts.append('<a href="/"><button type="button" class="secondary" style="margin-top:28px">← Volver al panel</button></a>')
 
     _login_drop_session(session_id)
     return HTMLResponse(_login_render_page("Listo", 3, "".join(parts)))
