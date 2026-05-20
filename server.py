@@ -1775,7 +1775,7 @@ def _render_dashboard(request: "Request") -> str:
         'setInterval(async function(){'
         'try{var r=await fetch("/dashboard/rows");if(r.ok){'
         'document.getElementById("status-rows").innerHTML=await r.text();'
-        '}}catch(e){}},10000)'
+        '}}catch(e){}},1000)'
         '</script>'
     )
 
