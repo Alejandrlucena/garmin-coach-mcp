@@ -1942,13 +1942,17 @@ def _railway_deploy_status() -> dict[str, str]:
     if not (RAILWAY_API_TOKEN and RAILWAY_SERVICE_ID and RAILWAY_ENVIRONMENT_ID):
         return {"status": "unknown", "label": "API no configurada"}
     query = (
-        "query Deployments($serviceId: String!, $environmentId: String!) {\n"
-        "  deployments(serviceId: $serviceId, environmentId: $environmentId, first: 1) {\n"
-        "    edges {\n"
-        "      node {\n"
-        "        id\n"
-        "        status\n"
-        "        createdAt\n"
+        "query ServiceStatus($serviceId: String!, $environmentId: String!) {\n"
+        "  service(id: $serviceId) {\n"
+        "    instances(environmentId: $environmentId) {\n"
+        "      edges {\n"
+        "        node {\n"
+        "          latestDeployment {\n"
+        "            id\n"
+        "            status\n"
+        "            createdAt\n"
+        "          }\n"
+        "        }\n"
         "      }\n"
         "    }\n"
         "  }\n"
@@ -1958,29 +1962,45 @@ def _railway_deploy_status() -> dict[str, str]:
         "query": query,
         "variables": {"serviceId": RAILWAY_SERVICE_ID, "environmentId": RAILWAY_ENVIRONMENT_ID},
     }
-    status, raw = _railway_graphql_call(RAILWAY_API_TOKEN, payload, project_header=False)
-    if status != 200:
-        return {"status": "error", "label": f"Error API (HTTP {status})"}
-    try:
-        data = json.loads(raw)
-        deploy = data.get("data", {}).get("deployments", {}).get("edges", [None])[0]
-        if not deploy:
-            return {"status": "unknown", "label": "Sin despliegues"}
-        node = deploy.get("node", {})
-        s = node.get("status", "unknown")
-        labels = {
-            "QUEUED": "En cola",
-            "BUILDING": "Compilando…",
-            "DEPLOYING": "Desplegando…",
-            "SUCCESS": "Activo ✅",
-            "FAILED": "Falló ❌",
-            "CRASHED": "Caído 💥",
-            "CANCELLED": "Cancelado",
-            "REMOVED": "Eliminado",
-        }
-        return {"status": s, "label": labels.get(s, s), "id": node.get("id", "")}
-    except (KeyError, json.JSONDecodeError, TypeError):
-        return {"status": "error", "label": "Error al interpretar respuesta"}
+    last_raw = ""
+    for use_project_header in (False, True):
+        status, raw = _railway_graphql_call(RAILWAY_API_TOKEN, payload, project_header=use_project_header)
+        last_raw = raw
+        if status in (401, 403):
+            continue
+        if status != 200:
+            continue
+        try:
+            data = json.loads(raw)
+            # Check for GraphQL errors
+            if "errors" in data:
+                msg = data["errors"][0].get("message", "Error GraphQL")[:100]
+                continue
+            deploy = (
+                data.get("data", {})
+                .get("service", {})
+                .get("instances", {})
+                .get("edges", [None])[0]
+                .get("node", {})
+                .get("latestDeployment")
+            )
+            if not deploy:
+                continue
+            s = deploy.get("status", "unknown")
+            labels = {
+                "QUEUED": "En cola",
+                "BUILDING": "Compilando…",
+                "DEPLOYING": "Desplegando…",
+                "SUCCESS": "Activo ✅",
+                "FAILED": "Falló ❌",
+                "CRASHED": "Caído 💥",
+                "CANCELLED": "Cancelado",
+                "REMOVED": "Eliminado",
+            }
+            return {"status": s, "label": labels.get(s, s), "id": deploy.get("id", "")}
+        except Exception:
+            continue
+    return {"status": "error", "label": "Error al obtener estado", "raw": last_raw[:500]}
 
 
 @mcp.custom_route("/dashboard/deploy-status", methods=["GET"])
