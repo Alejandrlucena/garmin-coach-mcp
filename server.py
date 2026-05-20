@@ -1771,7 +1771,7 @@ def _render_dashboard(request: "Request") -> str:
         '<div class="actions">' + "".join(actions) + '</div>'
         + (('<h2 style="margin-top:24px">Configuración pendiente</h2>' + "".join(guides))
            if guides else '')
-        '<script>'
+        + '<script>'
         'setInterval(async function(){'
         'try{var r=await fetch("/dashboard/rows");if(r.ok){'
         'document.getElementById("status-rows").innerHTML=await r.text();'
