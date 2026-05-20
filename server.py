@@ -846,7 +846,7 @@ def _login_render_page(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230a84ff%22/><text x=%2250%22 y=%2265%22 font-family=%22system-ui,-apple-system,sans-serif%22 font-size=%2240%22 font-weight=%22700%22 fill=%22white%22 text-anchor=%22middle%22>GC</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230b0c0f%22/><rect x=%228%22 y=%2210%22 width=%2284%22 height=%2280%22 rx=%2210%22 fill=%22none%22 stroke=%22%231a1a22%22 stroke-width=%221.5%22/><rect x=%2216%22 y=%2222%22 width=%2256%22 height=%223%22 rx=%221.5%22 fill=%22%232a2a32%22/><rect x=%2216%22 y=%2230%22 width=%2240%22 height=%222.5%22 rx=%221.25%22 fill=%22%232a2a32%22/><rect x=%2216%22 y=%2240%22 width=%2264%22 height=%223%22 rx=%221.5%22 fill=%22%231f2128%22/><rect x=%2216%22 y=%2240%22 width=%2242%22 height=%223%22 rx=%221.5%22 fill=%22%23ff6b35%22/><rect x=%2216%22 y=%2248%22 width=%2264%22 height=%223%22 rx=%221.5%22 fill=%22%231f2128%22/><rect x=%2216%22 y=%2248%22 width=%2250%22 height=%223%22 rx=%221.5%22 fill=%22%2330d158%22/><rect x=%2216%22 y=%2256%22 width=%2264%22 height=%223%22 rx=%221.5%22 fill=%22%231f2128%22/><rect x=%2216%22 y=%2256%22 width=%2228%22 height=%223%22 rx=%221.5%22 fill=%22%230a84ff%22/><rect x=%2216%22 y=%2264%22 width=%2264%22 height=%223%22 rx=%221.5%22 fill=%22%231f2128%22/><rect x=%2216%22 y=%2264%22 width=%2236%22 height=%223%22 rx=%221.5%22 fill=%22%23c4a0ff%22/><rect x=%2216%22 y=%2272%22 width=%2264%22 height=%223%22 rx=%221.5%22 fill=%22%231f2128%22/><rect x=%2216%22 y=%2272%22 width=%2232%22 height=%223%22 rx=%221.5%22 fill=%22%23ff6b35%22/><path d=%22M82,30 Q74,26 73,20 Q72,14 76,12 Q80,10 82,14 Q84,10 88,12 Q92,14 91,20 Q90,26 82,30 Z%22 fill=%22none%22 stroke=%22%23ff3b30%22 stroke-width=%222.5%22 stroke-linejoin=%22round%22/><polyline points=%2274,20 77,20 78,18 79,24 80,20 81,22 82,20 83,20 84,18 85,24 86,20 87,22 88,20 90,20%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
 {refresh_meta}
 {extra_head}
 <title>{_html.escape(title)}</title>
@@ -1924,8 +1924,16 @@ def _render_status_rows(s: dict[str, Any]) -> list[str]:
         rows.append(row(False, f"Claude conectado pero inactivo ({ago})",
                         "No hay actividad reciente. Si lo desconectaste a propósito, ignora este aviso."))
     else:
-        rows.append(row(True, "IA lista para conectar",
-                        "El servidor MCP está esperando conexiones. Cuando lo conectes desde tu IA (Claude, ChatGPT…), aparecerá aquí."))
+        garmin_detail = ""
+        if s["garmin_ok"] and s["garmin_email"]:
+            garmin_detail = f"Cuenta Garmin conectada: {_html.escape(s['garmin_email'])}"
+        elif s["garmin_has_tokens"]:
+            garmin_detail = "Cuenta Garmin configurada, pendiente de caché"
+        if garmin_detail:
+            rows.append(row(True, "IA lista para conectar", garmin_detail))
+        else:
+            rows.append(row(True, "IA lista para conectar",
+                            "El servidor MCP está esperando conexiones. Cuando lo conectes desde tu IA (Claude, ChatGPT…), aparecerá aquí."))
     return rows
 
 
