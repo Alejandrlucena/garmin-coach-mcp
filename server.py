@@ -846,7 +846,7 @@ def _login_render_page(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230a84ff%22/><path d=%22M22 56 L36 56 L42 32 L48 68 L54 44 L60 56 L78 56%22 stroke=%22white%22 stroke-width=%225%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230a84ff%22/><text x=%2250%22 y=%2265%22 font-family=%22system-ui,-apple-system,sans-serif%22 font-size=%2240%22 font-weight=%22700%22 fill=%22white%22 text-anchor=%22middle%22>GC</text></svg>">
 {refresh_meta}
 {extra_head}
 <title>{_html.escape(title)}</title>
@@ -1722,90 +1722,8 @@ def _render_dashboard(request: "Request") -> str:
     mcp_url = f"{public_url}/mcp"
     rw_vars_url = _railway_variables_deep_link()
 
-    def row(ok: bool, title: str, detail: str = "", action_html: str = "") -> str:
-        icon = "✅" if ok else "⚠️"
-        cls = "row row-ok" if ok else "row row-pending"
-        detail_html = f'<div class="row-detail">{detail}</div>' if detail else ""
-        return (
-            f'<div class="{cls}">'
-            f'  <div class="row-icon">{icon}</div>'
-            f'  <div class="row-main">'
-            f'    <div class="row-title">{title}</div>'
-            f'    {detail_html}'
-            f'  </div>'
-            f'  <div class="row-action">{action_html}</div>'
-            f'</div>'
-        )
-
     # ------ Status rows ------
-    rows: list[str] = []
-
-    rows.append(row(s["server_ok"], "Servidor desplegado", "Activo y respondiendo"))
-
-    if s["garmin_ok"]:
-        email_str = f" ({_html.escape(s['garmin_email'])})" if s["garmin_email"] else ""
-        rows.append(row(True, f"Garmin conectado{email_str}", "Tokens válidos, caché al día"))
-    elif s["garmin_has_tokens"]:
-        raw_err = s["garmin_last_error"] or "Caché aún sin refrescar"
-        if any(kw in raw_err for kw in ("No existe token persistido", "GARMIN_TOKENS_JSON")):
-            friendly = (
-                "Has iniciado sesión en Garmin, pero los tokens no se guardaron permanentemente todavía. "
-                "Si acabas de hacer login, <strong>guarda las variables en Railway</strong> "
-                "(sigue los pasos que te mostramos) y luego <a href='/'><strong>recarga esta página</strong></a>."
-            )
-        else:
-            friendly = f"Error al conectar con Garmin: {_html.escape(raw_err)}"
-        rows.append(row(
-            False,
-            "Garmin: pendiente de guardado permanente",
-            friendly,
-            '<a href="/login"><button type="button">Re-loguear</button></a>',
-        ))
-    else:
-        rows.append(row(
-            False,
-            "Garmin sin conectar",
-            "Necesitas hacer login con tus credenciales Garmin",
-            '<a href="/login"><button type="button">Conectar</button></a>',
-        ))
-
-    rows.append(row(
-        s["persistence_ok"],
-        "Guardado permanente",
-        ("Activado: tu conexión con Garmin se guarda sola y aguanta reinicios."
-         if s["persistence_ok"]
-         else "Si Railway reinicia el servidor (pasa de vez en cuando), perderás la conexión con Garmin y tendrás que volver a hacer login. Actívalo para que se guarde solo y no tengas que repetirlo."),
-        ('' if s["persistence_ok"]
-         else '<a href="/setup/persistencia"><button type="button" class="secondary">Activar</button></a>'),
-    ))
-
-    rows.append(row(
-        s["admin_lock_ok"],
-        "Protección con contraseña",
-        ("Activado: solo tú, con tu contraseña, puedes abrir el wizard de login."
-         if s["admin_lock_ok"]
-         else "Ahora mismo, cualquiera que sepa la dirección de tu servidor podría abrir esta página y cambiar la cuenta de Garmin conectada. Actívalo para protegerla con una contraseña que eliges tú."),
-        ('<a href="/setup/proteccion"><button type="button" class="secondary">Cambiar</button></a>'
-         if s["admin_lock_ok"]
-         else '<a href="/setup/proteccion"><button type="button" class="secondary">Activar</button></a>'),
-    ))
-
-    if s["claude_ok"]:
-        ago = _human_time_ago(s["claude_seen_minutes"])
-        rows.append(row(True, f"Claude conectado ({ago})", "Detectado por hits a /mcp"))
-    elif s["claude_seen_minutes"] is not None:
-        ago = _human_time_ago(s["claude_seen_minutes"])
-        rows.append(row(
-            False,
-            f"Claude conectado pero inactivo ({ago})",
-            "No hay actividad reciente. Si lo desconectaste a propósito, ignora este aviso.",
-        ))
-    else:
-        rows.append(row(
-            True,
-            "IA lista para conectar",
-            "El servidor MCP está esperando conexiones. Cuando lo conectes desde tu IA (Claude, ChatGPT…), aparecerá aquí.",
-        ))
+    rows = _render_status_rows(s)
 
     # ------ Quick actions ------
     actions: list[str] = []
@@ -1848,15 +1766,20 @@ def _render_dashboard(request: "Request") -> str:
         '<h1>Garmin Coach MCP</h1>'
         '<p class="muted">Panel de estado y configuración</p>'
         '<h2 style="margin-top:24px">Estado del setup</h2>'
-        '<div class="rows">' + "".join(rows) + '</div>'
+        '<div id="status-rows" class="rows">' + "".join(rows) + '</div>'
         '<h2 style="margin-top:24px">Acciones</h2>'
         '<div class="actions">' + "".join(actions) + '</div>'
         + (('<h2 style="margin-top:24px">Configuración pendiente</h2>' + "".join(guides))
            if guides else '')
+        '<script>'
+        'setInterval(async function(){'
+        'try{var r=await fetch("/dashboard/rows");if(r.ok){'
+        'document.getElementById("status-rows").innerHTML=await r.text();'
+        '}}catch(e){}},10000)'
+        '</script>'
     )
 
     extra_head = (
-        '<meta http-equiv="refresh" content="5">'
         '<style>'
         '.rows{display:flex;flex-direction:column;gap:10px}'
         '.row{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;'
@@ -1934,6 +1857,76 @@ def _set_auth_cookie(response, token: str, request: "Request") -> None:
         "admin_token", token, httponly=True, samesite="strict",
         max_age=AUTH_COOKIE_MAX_AGE_SECONDS, secure=_request_is_https(request),
     )
+
+
+@mcp.custom_route("/dashboard/rows", methods=["GET"])
+async def dashboard_rows(request: Request) -> Response:
+    from starlette.responses import HTMLResponse
+    s = _dashboard_status()
+    rows = _render_status_rows(s)
+    return HTMLResponse("".join(rows))
+
+
+def _render_status_rows(s: dict[str, Any]) -> list[str]:
+    def row(ok: bool, title: str, detail: str = "", action_html: str = "") -> str:
+        icon = "✅" if ok else "⚠️"
+        cls = "row row-ok" if ok else "row row-pending"
+        detail_html = f'<div class="row-detail">{detail}</div>' if detail else ""
+        return (
+            f'<div class="{cls}">'
+            f'  <div class="row-icon">{icon}</div>'
+            f'  <div class="row-main">'
+            f'    <div class="row-title">{title}</div>'
+            f'    {detail_html}'
+            f'  </div>'
+            f'  <div class="row-action">{action_html}</div>'
+            f'</div>'
+        )
+    rows: list[str] = []
+    rows.append(row(s["server_ok"], "Servidor desplegado", "Activo y respondiendo"))
+    if s["garmin_ok"]:
+        email_str = f" ({_html.escape(s['garmin_email'])})" if s["garmin_email"] else ""
+        rows.append(row(True, f"Garmin conectado{email_str}", "Tokens válidos, caché al día"))
+    elif s["garmin_has_tokens"]:
+        raw_err = s["garmin_last_error"] or "Caché aún sin refrescar"
+        if any(kw in raw_err for kw in ("No existe token persistido", "GARMIN_TOKENS_JSON")):
+            friendly = (
+                "Has iniciado sesión en Garmin, pero los tokens no se guardaron permanentemente todavía. "
+                "Si acabas de hacer login, <strong>guarda las variables en Railway</strong> "
+                "(sigue los pasos que te mostramos) y luego <a href='/'><strong>recarga esta página</strong></a>."
+            )
+        else:
+            friendly = f"Error al conectar con Garmin: {_html.escape(raw_err)}"
+        rows.append(row(False, "Garmin: pendiente de guardado permanente", friendly,
+                        '<a href="/login"><button type="button">Re-loguear</button></a>'))
+    else:
+        rows.append(row(False, "Garmin sin conectar",
+                        "Necesitas hacer login con tus credenciales Garmin",
+                        '<a href="/login"><button type="button">Conectar</button></a>'))
+    rows.append(row(s["persistence_ok"], "Guardado permanente",
+                    ("Activado: tu conexión con Garmin se guarda sola y aguanta reinicios."
+                     if s["persistence_ok"]
+                     else "Si Railway reinicia el servidor (pasa de vez en cuando), perderás la conexión con Garmin y tendrás que volver a hacer login. Actívalo para que se guarde solo y no tengas que repetirlo."),
+                    ('' if s["persistence_ok"]
+                     else '<a href="/setup/persistencia"><button type="button" class="secondary">Activar</button></a>')))
+    rows.append(row(s["admin_lock_ok"], "Protección con contraseña",
+                    ("Activado: solo tú, con tu contraseña, puedes abrir el wizard de login."
+                     if s["admin_lock_ok"]
+                     else "Ahora mismo, cualquiera que sepa la dirección de tu servidor podría abrir esta página y cambiar la cuenta de Garmin conectada. Actívalo para protegerla con una contraseña que eliges tú."),
+                    ('<a href="/setup/proteccion"><button type="button" class="secondary">Cambiar</button></a>'
+                     if s["admin_lock_ok"]
+                     else '<a href="/setup/proteccion"><button type="button" class="secondary">Activar</button></a>')))
+    if s["claude_ok"]:
+        ago = _human_time_ago(s["claude_seen_minutes"])
+        rows.append(row(True, f"Claude conectado ({ago})", "Detectado por hits a /mcp"))
+    elif s["claude_seen_minutes"] is not None:
+        ago = _human_time_ago(s["claude_seen_minutes"])
+        rows.append(row(False, f"Claude conectado pero inactivo ({ago})",
+                        "No hay actividad reciente. Si lo desconectaste a propósito, ignora este aviso."))
+    else:
+        rows.append(row(True, "IA lista para conectar",
+                        "El servidor MCP está esperando conexiones. Cuando lo conectes desde tu IA (Claude, ChatGPT…), aparecerá aquí."))
+    return rows
 
 
 @mcp.custom_route("/", methods=["GET"])
