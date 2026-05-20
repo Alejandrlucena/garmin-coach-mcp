@@ -1645,9 +1645,9 @@ def _dashboard_status() -> dict[str, Any]:
         cache_status = CACHE.get("status")
         last_refresh = CACHE.get("last_refresh")
         last_error = CACHE.get("last_error")
-    garmin_ok = bool(has_tokens) and cache_status == "ok"
+    garmin_ok = bool(has_tokens)
 
-    # 3. Persistence: full Railway API config required.
+    # 3. Persistence: Railway API config available (auto-sync on token change).
     persistence_ok = bool(
         RAILWAY_API_TOKEN and RAILWAY_PROJECT_ID and RAILWAY_ENVIRONMENT_ID and RAILWAY_SERVICE_ID
     )
@@ -1893,29 +1893,28 @@ def _render_status_rows(s: dict[str, Any]) -> list[str]:
     rows.append(row(s["server_ok"], "Servidor desplegado", "Activo y respondiendo"))
     if s["garmin_ok"]:
         email_str = f" ({_html.escape(s['garmin_email'])})" if s["garmin_email"] else ""
-        rows.append(row(True, f"Garmin conectado{email_str}", "Tokens válidos, caché al día"))
-    elif s["garmin_has_tokens"]:
-        raw_err = s["garmin_last_error"] or "Caché aún sin refrescar"
-        if any(kw in raw_err for kw in ("No existe token persistido", "GARMIN_TOKENS_JSON")):
-            friendly = (
-                "Has iniciado sesión en Garmin, pero los tokens no se guardaron permanentemente todavía. "
-                "Si acabas de hacer login, <strong>guarda las variables en Railway</strong> "
-                "(sigue los pasos que te mostramos) y luego <a href='/'><strong>recarga esta página</strong></a>."
-            )
+        cache_fresh = s["garmin_cache_status"] == "ok"
+        if cache_fresh:
+            detail = "Tokens válidos, caché al día"
+        elif s["garmin_last_error"]:
+            detail = f"Tokens presentes, pero hay un error: {_html.escape(s['garmin_last_error'])}"
         else:
-            friendly = f"Error al conectar con Garmin: {_html.escape(raw_err)}"
-        rows.append(row(False, "Garmin: pendiente de guardado permanente", friendly,
-                        '<a href="/login"><button type="button">Re-loguear</button></a>'))
+            detail = "Conectado, caché sin refrescar todavía"
+        rows.append(row(True, f"Garmin conectado{email_str}", detail))
     else:
         rows.append(row(False, "Garmin sin conectar",
                         "Necesitas hacer login con tus credenciales Garmin",
                         '<a href="/login"><button type="button">Conectar</button></a>'))
-    rows.append(row(s["persistence_ok"], "Guardado permanente",
-                    ("Activado: tu conexión con Garmin se guarda sola y aguanta reinicios."
-                     if s["persistence_ok"]
-                     else "Si Railway reinicia el servidor (pasa de vez en cuando), perderás la conexión con Garmin y tendrás que volver a hacer login. Actívalo para que se guarde solo y no tengas que repetirlo."),
-                    ('' if s["persistence_ok"]
-                     else '<a href="/setup/persistencia"><button type="button" class="secondary">Activar</button></a>')))
+    if s["persistence_ok"] and s["garmin_has_tokens"]:
+        rows.append(row(True, "Guardado permanente",
+                        "Activado: tu conexión con Garmin se guarda sola y aguanta reinicios."))
+    elif s["persistence_ok"] and not s["garmin_has_tokens"]:
+        rows.append(row(False, "Guardado permanente",
+                        "Railway API configurado, pero no hay tokens de Garmin que persistir. Conecta Garmin primero."))
+    else:
+        rows.append(row(False, "Guardado permanente",
+                        "Si Railway reinicia el servidor (pasa de vez en cuando), perderás la conexión con Garmin y tendrás que volver a hacer login. Actívalo para que se guarde solo y no tengas que repetirlo.",
+                        '<a href="/setup/persistencia"><button type="button" class="secondary">Activar</button></a>'))
     rows.append(row(s["admin_lock_ok"], "Protección con contraseña",
                     ("Activado: solo tú, con tu contraseña, puedes abrir el wizard de login."
                      if s["admin_lock_ok"]
@@ -2602,48 +2601,28 @@ async def login_result(request: Request) -> Response:
             '<div class="success">Tokens guardados en Railway automáticamente. '
             'Tu MCP es permanente — sobrevivirá a reinicios.</div>'
         )
-        parts.append('<h2 style="margin-top:24px">Conéctalo a tu IA</h2>')
-        parts.append('<p class="muted">Funciona con cualquier IA con conectores MCP (Claude, ChatGPT…). Pega esta URL en Settings → Connectors → Add custom connector:</p>')
-        parts.append(
-            f'<pre id="mcp-url">{_html.escape(mcp_url)}</pre>'
-            '<button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'mcp-url\').innerText);this.innerText=\'Copiado ✓\'">Copiar URL del conector</button>'
-        )
     else:
         # Manual persistence path: show ONE copy-paste block formatted for Railway.
         railway_block = f"GARMIN_TOKENS_JSON={tokens_b64}"
         parts.append(
-            '<p>Tu MCP está activo <strong>durante esta sesión</strong>. Para hacerlo permanente (recomendado), un único copy-paste:</p>'
+            '<p>Tu MCP está activo <strong>durante esta sesión</strong>. Para hacerlo permanente:</p>'
             '<ol style="padding-left:20px;line-height:1.8">'
-            '<li>Abre Railway → tu servicio → pestaña <strong>Variables</strong></li>'
-            '<li>Click en <strong>Raw Editor</strong></li>'
-            '<li>Pega el bloque de abajo y pulsa <strong>Save</strong></li>'
-             '<li>Railway redeployeará el servicio automáticamente</li>'
-             '<li>Puedes esperar a que la página se recargue sola (confirmará que todo está en verde ✅) o pulsar "← Volver al panel" y el deploy seguirá en segundo plano</li>'
+             '<li>Copia el bloque de abajo</li>'
+             '<li>Abre Railway → tu servicio → pestaña <strong>Variables</strong> → <strong>Raw Editor</strong></li>'
+             '<li>Pega y pulsa <strong>Save</strong></li>'
+             '<li>Railway te preguntará si quieres redeployear — dile que <strong>sí</strong></li>'
              '</ol>'
-             f'<pre id="env-block">{_html.escape(railway_block)}</pre>'
-             '<button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'env-block\').innerText);this.innerText=\'Copiado ✓\'">Copiar para Railway</button>'
-             '<div class="success" style="margin-top:16px">Guardado en Railway. Esta página se actualiza sola con el estado del despliegue.</div>'
-             '<div id="deploy-status" style="margin-top:12px;font-size:14px;color:#9a9aa2">⏳ Esperando confirmación del despliegue…</div>'
-             '<a href="/" style="display:inline-block;margin-top:16px"><button type="button" class="secondary">← Volver al panel</button></a>'
-             '<script>'
-             'var s=document.getElementById("deploy-status"),start=Date.now();'
-             'setTimeout(function(){'
-             'var t=setInterval(function(){'
-             'var sec=Math.floor((Date.now()-start)/1000);'
-             'fetch("/dashboard/deploy-status").then(function(r){return r.json()}).then(function(d){'
-             'if(d.status==="SUCCESS"){window.location.reload()}'
-             'else{s.innerText="⏳ "+d.label+" ("+sec+"s)"}'
-             '}).catch(function(){'
-             's.innerText="⏳ Comprobando… ("+sec+"s)"});'
-             '},4000)'
-             '},3000)'
+             f'<pre style="max-height:260px;overflow:auto;background:#1c1c22;color:#f2f2f7;padding:14px;border-radius:10px;font-size:13px;line-height:1.5;word-break:break-all;white-space:pre-wrap;border:1px solid #2a2a32" id="env-block">{_html.escape(railway_block)}</pre>'
+             '<button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'env-block\').innerText);this.innerText=\'Copiado ✓\'">Copiar bloque</button>'
+             '<a href="/" style="display:inline-block;margin-top:16px"><button type="button" class="secondary">Ya desplegué, ir al panel</button></a>'
         )
-        parts.append('<h2 style="margin-top:32px">Conéctalo a tu IA</h2>')
-        parts.append('<p class="muted">Funciona con cualquier IA con conectores MCP (Claude, ChatGPT…). Pégala en Settings → Connectors:</p>')
-        parts.append(
-            f'<pre id="mcp-url">{_html.escape(mcp_url)}</pre>'
-            '<button type="button" class="secondary" onclick="navigator.clipboard.writeText(document.getElementById(\'mcp-url\').innerText);this.innerText=\'Copiado ✓\'">Copiar URL del conector</button>'
-        )
+
+    parts.append('<h2 style="margin-top:32px">Conéctalo a tu IA</h2>')
+    parts.append('<p class="muted">Funciona con cualquier IA con conectores MCP (Claude, ChatGPT…). Pega esta URL en Settings → Connectors:</p>')
+    parts.append(
+        f'<pre id="mcp-url">{_html.escape(mcp_url)}</pre>'
+        '<button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'mcp-url\').innerText);this.innerText=\'Copiado ✓\'">Copiar URL del conector</button>'
+    )
 
     _login_drop_session(session_id)
     return HTMLResponse(_login_render_page("Listo", 3, "".join(parts)))
