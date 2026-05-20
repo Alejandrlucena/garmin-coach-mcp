@@ -2564,7 +2564,7 @@ async def login_result(request: Request) -> Response:
              '</ol>'
              f'<pre id="env-block">{_html.escape(railway_block)}</pre>'
              '<button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'env-block\').innerText);this.innerText=\'Copiado ✓\'">Copiar para Railway</button>'
-             '<div class="success" style="margin-top:16px">Guardado en Railway. El despliegue suele tardar <strong>~4-12 minutos</strong>.</div>'
+             '<div class="success" style="margin-top:16px">Guardado en Railway. Esta página se actualiza sola con el estado del despliegue.</div>'
              '<div id="deploy-status" style="margin-top:12px;font-size:14px;color:#9a9aa2">⏳ Esperando confirmación del despliegue…</div>'
              '<a href="/" style="display:inline-block;margin-top:16px"><button type="button" class="secondary">← Volver al panel</button></a>'
              '<script>'
