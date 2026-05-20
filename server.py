@@ -1937,6 +1937,58 @@ def _render_status_rows(s: dict[str, Any]) -> list[str]:
     return rows
 
 
+def _railway_deploy_status() -> dict[str, str]:
+    """Query Railway API for the latest deployment status."""
+    if not (RAILWAY_API_TOKEN and RAILWAY_SERVICE_ID and RAILWAY_ENVIRONMENT_ID):
+        return {"status": "unknown", "label": "API no configurada"}
+    query = (
+        "query Deployments($serviceId: String!, $environmentId: String!) {\n"
+        "  deployments(serviceId: $serviceId, environmentId: $environmentId, first: 1) {\n"
+        "    edges {\n"
+        "      node {\n"
+        "        id\n"
+        "        status\n"
+        "        createdAt\n"
+        "      }\n"
+        "    }\n"
+        "  }\n"
+        "}"
+    )
+    payload = {
+        "query": query,
+        "variables": {"serviceId": RAILWAY_SERVICE_ID, "environmentId": RAILWAY_ENVIRONMENT_ID},
+    }
+    status, raw = _railway_graphql_call(RAILWAY_API_TOKEN, payload, project_header=False)
+    if status != 200:
+        return {"status": "error", "label": f"Error API (HTTP {status})"}
+    try:
+        data = json.loads(raw)
+        deploy = data.get("data", {}).get("deployments", {}).get("edges", [None])[0]
+        if not deploy:
+            return {"status": "unknown", "label": "Sin despliegues"}
+        node = deploy.get("node", {})
+        s = node.get("status", "unknown")
+        labels = {
+            "QUEUED": "En cola",
+            "BUILDING": "Compilando…",
+            "DEPLOYING": "Desplegando…",
+            "SUCCESS": "Activo ✅",
+            "FAILED": "Falló ❌",
+            "CRASHED": "Caído 💥",
+            "CANCELLED": "Cancelado",
+            "REMOVED": "Eliminado",
+        }
+        return {"status": s, "label": labels.get(s, s), "id": node.get("id", "")}
+    except (KeyError, json.JSONDecodeError, TypeError):
+        return {"status": "error", "label": "Error al interpretar respuesta"}
+
+
+@mcp.custom_route("/dashboard/deploy-status", methods=["GET"])
+async def dashboard_deploy_status(request: Request) -> Response:
+    from starlette.responses import JSONResponse
+    return JSONResponse(_railway_deploy_status())
+
+
 @mcp.custom_route("/", methods=["GET"])
 async def root(request: Request) -> Response:
     from starlette.responses import HTMLResponse, RedirectResponse
@@ -2512,7 +2564,7 @@ async def login_result(request: Request) -> Response:
              '</ol>'
              f'<pre id="env-block">{_html.escape(railway_block)}</pre>'
              '<button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'env-block\').innerText);this.innerText=\'Copiado ✓\'">Copiar para Railway</button>'
-             '<div class="success" style="margin-top:16px">Guardado en Railway. El despliegue suele tardar <strong>~1-2 minutos</strong>.</div>'
+             '<div class="success" style="margin-top:16px">Guardado en Railway. El despliegue suele tardar <strong>~4-12 minutos</strong>.</div>'
              '<div id="deploy-status" style="margin-top:12px;font-size:14px;color:#9a9aa2">⏳ Esperando confirmación del despliegue…</div>'
              '<a href="/" style="display:inline-block;margin-top:16px"><button type="button" class="secondary">← Volver al panel</button></a>'
              '<script>'
@@ -2520,10 +2572,11 @@ async def login_result(request: Request) -> Response:
              'setTimeout(function(){'
              'var t=setInterval(function(){'
              'var sec=Math.floor((Date.now()-start)/1000);'
-             's.innerText="⏳ Comprobando despliegue… ("+sec+"s)";'
-             'fetch("/dashboard/rows").then(function(r){if(r.ok)return r.text()}).then(function(h){'
-             'if(h&&h.indexOf("Guardado permanente")>-1&&h.indexOf("row-ok")>-1)window.location.reload();'
-             '}).catch(function(){})'
+             'fetch("/dashboard/deploy-status").then(function(r){return r.json()}).then(function(d){'
+             'if(d.status==="SUCCESS"){window.location.reload()}'
+             'else{s.innerText="⏳ "+d.label+" ("+sec+"s)"}'
+             '}).catch(function(){'
+             's.innerText="⏳ Comprobando… ("+sec+"s)"});'
              '},4000)'
              '},3000)'
         )
