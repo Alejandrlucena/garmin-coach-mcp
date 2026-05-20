@@ -308,9 +308,10 @@ LOGIN_MFA_TIMEOUT_SECONDS = 300
 AUTH_COOKIE_MAX_AGE_SECONDS = 31536000  # 365 days
 
 # Track the last time the /mcp endpoint was hit, used by the dashboard to tell
-# the user whether Claude has actually connected to this server.
+# the user whether an IA has actually connected to this server.
 _LAST_MCP_HIT_LOCK = threading.Lock()
 _LAST_MCP_HIT: float | None = None
+_LAST_MCP_CLIENT: str = ""
 
 _LOGIN_SESSIONS: dict[str, dict[str, Any]] = {}
 _LOGIN_SESSIONS_LOCK = threading.Lock()
@@ -1650,11 +1651,12 @@ def _dashboard_status() -> dict[str, Any]:
     # 4. Admin lock: a user-defined password protects /login after setup.
     admin_lock_ok = bool(_current_admin_token())
 
-    # 5. Claude connected: any /mcp hit in the last 24h.
+    # 5. MCP client connected: any /mcp hit in the last 24h.
     with _LAST_MCP_HIT_LOCK:
         last_mcp = _LAST_MCP_HIT
     claude_seen_minutes = None
     claude_ok = False
+    mcp_client = _LAST_MCP_CLIENT
     if last_mcp:
         delta_min = (now - last_mcp) / 60
         claude_seen_minutes = int(delta_min)
@@ -1672,6 +1674,7 @@ def _dashboard_status() -> dict[str, Any]:
         "admin_lock_ok": admin_lock_ok,
         "claude_ok": claude_ok,
         "claude_seen_minutes": claude_seen_minutes,
+        "mcp_client": mcp_client,
     }
 
 
@@ -1742,7 +1745,7 @@ def _render_dashboard(request: "Request") -> str:
 
     # ------ Inline guides (collapsible) ------
     # Persistence and password are handled by their own guided wizards
-    # (/setup/persistencia and /setup/proteccion). Only Claude connection stays
+    # (/setup/persistencia and /setup/proteccion). Only MCP client connection stays
     # here as an inline guide, since it's a manual step on Claude's side.
     guides: list[str] = []
 
@@ -1918,22 +1921,19 @@ def _render_status_rows(s: dict[str, Any]) -> list[str]:
                      else '<a href="/setup/proteccion"><button type="button" class="secondary">Activar</button></a>')))
     if s["claude_ok"]:
         ago = _human_time_ago(s["claude_seen_minutes"])
-        rows.append(row(True, f"Claude conectado ({ago})", "Detectado por hits a /mcp"))
+        client = s.get("mcp_client", "")
+        detail = "Detectado por hits a /mcp"
+        if client:
+            short = client.split("/")[0] if "/" in client else client
+            detail += f" · {short}"
+        rows.append(row(True, f"IA conectada ({ago})", detail))
     elif s["claude_seen_minutes"] is not None:
         ago = _human_time_ago(s["claude_seen_minutes"])
-        rows.append(row(False, f"Claude conectado pero inactivo ({ago})",
-                        "No hay actividad reciente. Si lo desconectaste a propósito, ignora este aviso."))
+        rows.append(row(False, f"IA conectada pero inactiva ({ago})",
+                        "No hay actividad reciente."))
     else:
-        garmin_detail = ""
-        if s["garmin_ok"] and s["garmin_email"]:
-            garmin_detail = f"Cuenta Garmin conectada: {_html.escape(s['garmin_email'])}"
-        elif s["garmin_has_tokens"]:
-            garmin_detail = "Cuenta Garmin configurada, pendiente de caché"
-        if garmin_detail:
-            rows.append(row(True, "IA lista para conectar", garmin_detail))
-        else:
-            rows.append(row(True, "IA lista para conectar",
-                            "El servidor MCP está esperando conexiones. Cuando lo conectes desde tu IA (Claude, ChatGPT…), aparecerá aquí."))
+        rows.append(row(True, "IA lista para conectar",
+                        "El servidor MCP está esperando conexiones."))
     return rows
 
 
@@ -2982,9 +2982,13 @@ class _MCPHitTracker:
         if scope.get("type") == "http":
             path = scope.get("path", "")
             if path == "/mcp" or path.startswith("/mcp/"):
-                global _LAST_MCP_HIT
+                global _LAST_MCP_HIT, _LAST_MCP_CLIENT
                 with _LAST_MCP_HIT_LOCK:
                     _LAST_MCP_HIT = time.time()
+                    headers = dict(scope.get("headers", []))
+                    ua = headers.get(b"user-agent", b"").decode("utf-8", errors="replace")
+                    if ua:
+                        _LAST_MCP_CLIENT = ua
         await self.app(scope, receive, send)
 
 
