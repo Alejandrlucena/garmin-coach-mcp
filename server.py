@@ -2610,7 +2610,7 @@ async def login_result(request: Request) -> Response:
              '<li>Copia el bloque de abajo</li>'
              '<li>Abre Railway → tu servicio → pestaña <strong>Variables</strong> → <strong>Raw Editor</strong></li>'
              '<li>Pega y pulsa <strong>Save</strong></li>'
-             '<li>Railway te preguntará si quieres redeployear — dile que <strong>sí</strong></li>'
+             '<li>Railway te preguntará si quieres redesplegar — dile que <strong>sí</strong></li>'
              '</ol>'
              f'<pre style="max-height:260px;overflow:auto;background:#1c1c22;color:#f2f2f7;padding:14px;border-radius:10px;font-size:13px;line-height:1.5;word-break:break-all;white-space:pre-wrap;border:1px solid #2a2a32" id="env-block">{_html.escape(railway_block)}</pre>'
              '<button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'env-block\').innerText);this.innerText=\'Copiado ✓\'">Copiar bloque</button>'
