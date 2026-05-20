@@ -1745,11 +1745,19 @@ def _render_dashboard(request: "Request") -> str:
         email_str = f" ({_html.escape(s['garmin_email'])})" if s["garmin_email"] else ""
         rows.append(row(True, f"Garmin conectado{email_str}", "Tokens válidos, caché al día"))
     elif s["garmin_has_tokens"]:
-        err = _html.escape(s["garmin_last_error"] or "Caché aún sin refrescar")
+        raw_err = s["garmin_last_error"] or "Caché aún sin refrescar"
+        if any(kw in raw_err for kw in ("No existe token persistido", "GARMIN_TOKENS_JSON")):
+            friendly = (
+                "Has iniciado sesión en Garmin, pero los tokens no se guardaron permanentemente todavía. "
+                "Si acabas de hacer login, <strong>guarda las variables en Railway</strong> "
+                "(sigue los pasos que te mostramos) y luego <a href='/'><strong>recarga esta página</strong></a>."
+            )
+        else:
+            friendly = f"Error al conectar con Garmin: {_html.escape(raw_err)}"
         rows.append(row(
             False,
-            "Garmin: tokens existentes pero con problemas",
-            err,
+            "Garmin: pendiente de guardado permanente",
+            friendly,
             '<a href="/login"><button type="button">Re-loguear</button></a>',
         ))
     else:
@@ -2495,10 +2503,13 @@ async def login_result(request: Request) -> Response:
             '<ol style="padding-left:20px;line-height:1.8">'
             '<li>Abre Railway → tu servicio → pestaña <strong>Variables</strong></li>'
             '<li>Click en <strong>Raw Editor</strong></li>'
-            '<li>Pega esto y guarda:</li>'
+            '<li>Pega el bloque de abajo y pulsa <strong>Save</strong></li>'
+            '<li>Railway redeployeará el servicio automáticamente — espera a que el nuevo deploy se ponga <strong>Active</strong> (verde)</li>'
+            '<li>Vuelve a esta página y <strong>recárgala</strong> para verificar que todo está en verde ✅</li>'
             '</ol>'
             f'<pre id="env-block">{_html.escape(railway_block)}</pre>'
             '<button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'env-block\').innerText);this.innerText=\'Copiado ✓\'">Copiar para Railway</button>'
+            '<div class="success" style="margin-top:16px">Después de guardar en Railway, recarga esta página. Si ves todos los check ✅ en verde, ¡ya tienes el MCP permanente!</div>'
         )
         parts.append('<h2 style="margin-top:32px">Conéctalo a tu IA</h2>')
         parts.append('<p class="muted">Funciona con cualquier IA con conectores MCP (Claude, ChatGPT…). Pégala en Settings → Connectors:</p>')
