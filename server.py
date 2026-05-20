@@ -1651,7 +1651,7 @@ def _dashboard_status() -> dict[str, Any]:
     # 4. Admin lock: a user-defined password protects /login after setup.
     admin_lock_ok = bool(_current_admin_token())
 
-    # 5. MCP client connected: any /mcp hit in the last 24h.
+    # 5. MCP client connected: any /mcp hit recently.
     with _LAST_MCP_HIT_LOCK:
         last_mcp = _LAST_MCP_HIT
     claude_seen_minutes = None
@@ -1660,7 +1660,7 @@ def _dashboard_status() -> dict[str, Any]:
     if last_mcp:
         delta_min = (now - last_mcp) / 60
         claude_seen_minutes = int(delta_min)
-        claude_ok = delta_min < 24 * 60
+        claude_ok = delta_min < 15
 
     return {
         "server_ok": server_ok,
