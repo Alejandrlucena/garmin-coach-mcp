@@ -47,15 +47,15 @@ Railway es donde vivirá tu servidor (gratis para empezar).
 3. Si te pregunta un puerto, pon **8000**.
 4. Te dará una dirección tipo `https://tu-proyecto.up.railway.app`. **Esa es tu web.**
 
-### Paso 5 · Configura todo desde el panel (sin tocar nada raro)
+### Paso 5 · Configura todo desde el panel
 
-Abre tu dirección web. Verás un **panel** con una lista de pasos. Pulsa cada botón y rellena lo que te pida:
+Abre tu dirección web. Verás un **panel** con una lista de pasos:
 
-1. **Conectar** → tu email de Garmin + contraseña + el código que te llega al Gmail (MFA).
-2. **Guardado permanente** → pega un "Railway API token". El propio panel te explica con un enlace de dónde sacarlo (Railway → Account → Tokens). Esto hace que no tengas que re-loguearte cada vez que el servidor reinicie.
+1. **Conectar Garmin** → email + contraseña + el código que te llega al Gmail (MFA).
+2. **Guardado permanente** → tras loguearte, el panel te da un bloque de texto para pegar en Railway → Variables → Raw Editor. Guarda y redespliega. Si Railway inyectó automáticamente el `RAILWAY_API_TOKEN`, se marca solo sin que hagas nada.
 3. **Protección con contraseña** → eliges una contraseña para que solo tú puedas abrir el panel.
 
-Cada paso se pone en **verde ✅** cuando está hecho. **Nunca tienes que tocar "variables de entorno" ni nada técnico.**
+Cada paso se pone en **verde ✅** cuando está hecho. El panel se refresca solo cada pocos segundos.
 
 ### Paso 6 · Conéctalo a tu IA (Claude, ChatGPT, etc.)
 
@@ -87,13 +87,13 @@ Cuando Garmin caduque tu sesión (raro, ~1 año) o cambies de contraseña en Gar
         │
 ②  Abrir la URL  ───────────►   aparece el Panel de estado
         │
-③  [Conectar]                   email · contraseña · código MFA
+③  [Conectar Garmin]            email · contraseña · código MFA
         │
-④  [Guardado permanente]        pegar Railway API token
+④  [Guardado permanente]        pegar token en Railway Variables
         │
 ⑤  [Protección]                 elegir contraseña (con ojito 👁)
         │
-⑥  Copiar URL /mcp  ────────►   pegar en Claude → Connectors
+⑥  Copiar URL /mcp  ────────►   pegar en Claude / ChatGPT
         │
       ✅  Listo
 ```
@@ -107,13 +107,13 @@ Garmin Coach MCP · Panel de estado
 Estado del setup
   ✅  Servidor desplegado          Activo y respondiendo
   ✅  Garmin conectado             Tokens válidos, caché al día
-  ✅  Guardado permanente          Aguanta reinicios
-  ⚠️  Protección con contraseña    [ Activar ]
-  ⚠️  Claude sin conectar          [ Cómo conectar ]
+  ✅  ⚠️  Guardado permanente      Activado / Sin configurar
+  ✅  ⚠️  Protección con contraseña  Activada / [Activar]
+  ✅  IA conectada / durmiendo / lista  Según uso
 
 Acciones
   [ Re-loguear Garmin ]
-  [ Copiar URL para Claude ]
+  [ Copiar URL del conector ]
   [ Abrir Railway Variables ]
   [ Bloquear sesión ]
 ```
