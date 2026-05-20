@@ -1635,7 +1635,10 @@ def _dashboard_status() -> dict[str, Any]:
     server_ok = True
 
     # 2. Garmin connected: tokens exist on disk or in env var, and last refresh worked.
-    live_tokens = os.getenv("GARMIN_TOKENS_JSON", "").strip()
+    # Try real-time check via Railway API first.
+    live_tokens = _railway_check_variable("GARMIN_TOKENS_JSON")
+    if live_tokens is None:
+        live_tokens = os.getenv("GARMIN_TOKENS_JSON", "").strip()
     has_tokens = TOKEN_FILE.exists() or bool(live_tokens)
     garmin_email = os.getenv("GARMIN_EMAIL", "").strip() or None
     with CACHE_LOCK:
@@ -2002,6 +2005,40 @@ def _railway_deploy_status() -> dict[str, str]:
         except Exception:
             continue
     return {"status": "error", "label": "Error al obtener estado", "raw": last_raw[:500]}
+
+
+def _railway_check_variable(name: str) -> str | None:
+    """Query Railway API for a variable value. Returns None on failure (fallback to env)."""
+    if not (RAILWAY_API_TOKEN and RAILWAY_SERVICE_ID and RAILWAY_ENVIRONMENT_ID and RAILWAY_PROJECT_ID):
+        return None
+    query = (
+        "query Variables($projectId: String!, $environmentId: String!, $serviceId: String!) {\n"
+        "  variables(projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId) {\n"
+        "    name\n"
+        "    value\n"
+        "  }\n"
+        "}"
+    )
+    payload = {
+        "query": query,
+        "variables": {
+            "projectId": RAILWAY_PROJECT_ID,
+            "environmentId": RAILWAY_ENVIRONMENT_ID,
+            "serviceId": RAILWAY_SERVICE_ID,
+        },
+    }
+    for use_project_header in (False, True):
+        status, raw = _railway_graphql_call(RAILWAY_API_TOKEN, payload, project_header=use_project_header)
+        if status != 200:
+            continue
+        try:
+            data = json.loads(raw)
+            for var in data.get("data", {}).get("variables", []):
+                if var.get("name") == name:
+                    return var.get("value", "")
+        except Exception:
+            continue
+    return None
 
 
 @mcp.custom_route("/dashboard/deploy-status", methods=["GET"])
