@@ -1929,8 +1929,8 @@ def _render_status_rows(s: dict[str, Any]) -> list[str]:
         rows.append(row(True, f"IA conectada ({ago})", detail))
     elif s["claude_seen_minutes"] is not None:
         ago = _human_time_ago(s["claude_seen_minutes"])
-        rows.append(row(False, f"IA conectada pero inactiva ({ago})",
-                        "No hay actividad reciente."))
+        rows.append(row(True, f"IA durmiendo ({ago})",
+                        "Sin actividad reciente. Cuando la IA vuelva a usarlo, se reactivará."))
     else:
         rows.append(row(True, "IA lista para conectar",
                         "El servidor MCP está esperando conexiones."))
