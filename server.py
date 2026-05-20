@@ -1803,8 +1803,8 @@ def _render_dashboard(request: "Request") -> str:
     else:
         rows.append(row(
             True,
-            "Claude listo para conectar",
-            "El servidor MCP está esperando conexiones. Cuando lo conectes desde tu IA, aparecerá aquí.",
+            "IA lista para conectar",
+            "El servidor MCP está esperando conexiones. Cuando lo conectes desde tu IA (Claude, ChatGPT…), aparecerá aquí.",
         ))
 
     # ------ Quick actions ------
