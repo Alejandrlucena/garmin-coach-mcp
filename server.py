@@ -2828,7 +2828,13 @@ async def setup_protection_submit(request: Request) -> Response:
         f'<h1>{heading}</h1>'
         f'{persist_note}'
         '<p class="muted" style="margin-top:8px">Tu contraseña es: '
-        f'<code>{_html.escape(pwd)}</code></p>'
+        '<span id="pwd-display" style="font-family:monospace;background:rgba(255,255,255,.1);padding:2px 6px;border-radius:5px">'
+        '********</span>'
+        '<button type="button" id="pwd-toggle" style="background:none;border:none;color:#9a9aa2;cursor:pointer;font-size:18px;padding:2px 6px;vertical-align:middle;width:auto;margin:0" onclick="'
+        "var s=document.getElementById('pwd-display');"
+        "if(s.dataset.shown){s.textContent='********';s.dataset.shown='';this.textContent='👁';}"
+        "else{s.textContent=" + json.dumps(pwd) + ";s.dataset.shown='1';this.textContent='🙈';}"
+        '">👁</button></p>'
         '<h2 style="margin-top:24px">Guarda este enlace (opcional)</h2>'
         '<p class="muted">Atajo para entrar sin teclear la contraseña. Guárdalo en favoritos del móvil:</p>'
         f'<pre id="login-url">{_html.escape(login_url)}</pre>'
