@@ -2442,7 +2442,8 @@ async def login_result(request: Request) -> Response:
         if not _is_first_run():
             body = (
                 '<h1>✅ Configuración completada</h1>'
-                '<p>Tu cuenta Garmin ya está conectada. Puedes cerrar esta página.</p>'
+                '<p>Tu cuenta Garmin ya está conectada.</p>'
+                '<script>setTimeout(function(){window.location.href="/"},2000)</script>'
                 '<a href="/"><button type="button">Ir al panel</button></a>'
             )
             return HTMLResponse(_login_render_page("Completado", None, body))
@@ -2506,12 +2507,20 @@ async def login_result(request: Request) -> Response:
             '<li>Abre Railway → tu servicio → pestaña <strong>Variables</strong></li>'
             '<li>Click en <strong>Raw Editor</strong></li>'
             '<li>Pega el bloque de abajo y pulsa <strong>Save</strong></li>'
-            '<li>Railway redeployeará el servicio automáticamente — espera a que el nuevo deploy se ponga <strong>Active</strong> (verde)</li>'
-            '<li>Vuelve a esta página y <strong>recárgala</strong> para verificar que todo está en verde ✅</li>'
-            '</ol>'
-            f'<pre id="env-block">{_html.escape(railway_block)}</pre>'
-            '<button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'env-block\').innerText);this.innerText=\'Copiado ✓\'">Copiar para Railway</button>'
-            '<div class="success" style="margin-top:16px">Después de guardar en Railway, recarga esta página. Si ves todos los check ✅ en verde, ¡ya tienes el MCP permanente!</div>'
+             '<li>Railway redeployeará el servicio automáticamente — espera a que el nuevo deploy se ponga <strong>Active</strong> (verde)</li>'
+             '<li>Vuelve a esta página y <strong>recárgala</strong> para verificar que todo está en verde ✅</li>'
+             '</ol>'
+             f'<pre id="env-block">{_html.escape(railway_block)}</pre>'
+             '<button type="button" onclick="navigator.clipboard.writeText(document.getElementById(\'env-block\').innerText);this.innerText=\'Copiado ✓\'">Copiar para Railway</button>'
+             '<div class="success" style="margin-top:16px">Después de guardar en Railway, esta página se recargará sola cuando el despliegue esté activo ✅</div>'
+             '<script>'
+             'setTimeout(function(){'
+             'var t=setInterval(function(){'
+             'fetch("/dashboard/rows").then(function(r){if(r.ok)return r.text()}).then(function(h){'
+             'if(h&&h.indexOf("Guardado permanente")>-1&&h.indexOf("row-ok")>-1)window.location.reload();'
+             '}).catch(function(){})'
+             '},4000)'
+             '},3000)'
         )
         parts.append('<h2 style="margin-top:32px">Conéctalo a tu IA</h2>')
         parts.append('<p class="muted">Funciona con cualquier IA con conectores MCP (Claude, ChatGPT…). Pégala en Settings → Connectors:</p>')
