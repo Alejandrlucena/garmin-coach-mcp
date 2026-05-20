@@ -1793,7 +1793,6 @@ def _render_dashboard(request: "Request") -> str:
         'background:#16161c;border:1px solid #26262e;border-radius:12px}'
         '.row-ok{background:rgba(48,209,88,.10);border-color:rgba(48,209,88,.25)}'
         '.row-pending{background:rgba(255,159,10,.10);border-color:rgba(255,159,10,.28)}'
-        '.row-error{background:rgba(255,69,58,.12);border-color:rgba(255,69,58,.3)}'
         '.row-icon{font-size:20px;line-height:1.3;flex:0 0 24px}'
         '.row-main{flex:1 1 auto;min-width:0}'
         '.row-title{font-weight:600;font-size:15px;color:#fff}'
@@ -1876,13 +1875,9 @@ async def dashboard_rows(request: Request) -> Response:
 
 
 def _render_status_rows(s: dict[str, Any]) -> list[str]:
-    def row(ok: bool | str, title: str, detail: str = "", action_html: str = "") -> str:
-        if ok is True:
-            icon, cls = "✅", "row row-ok"
-        elif ok == "error":
-            icon, cls = "🚫", "row row-error"
-        else:
-            icon, cls = "⚠️", "row row-pending"
+    def row(ok: bool, title: str, detail: str = "", action_html: str = "") -> str:
+        icon = "✅" if ok else "⚠️"
+        cls = "row row-ok" if ok else "row row-pending"
         detail_html = f'<div class="row-detail">{detail}</div>' if detail else ""
         return (
             f'<div class="{cls}">'
@@ -1917,7 +1912,7 @@ def _render_status_rows(s: dict[str, Any]) -> list[str]:
         rows.append(row(False, "Guardado permanente",
                         "Railway API configurado, pero no hay tokens de Garmin que persistir. Conecta Garmin primero."))
     else:
-        rows.append(row("error", "Guardado permanente",
+        rows.append(row(False, "Guardado permanente",
                         "No configurado. Si Railway reinicia el servidor perderás la conexión con Garmin.",
                         '<a href="/setup/persistencia"><button type="button" class="secondary">Activar</button></a>'))
     rows.append(row(s["admin_lock_ok"], "Protección con contraseña",
