@@ -1,0 +1,6 @@
+# Dependencias solo para desarrollo/tests (no se instalan en producción).
+# Uso:
+#   python3.11 -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt -r requirements-dev.txt
+#   pytest
+pytest>=8

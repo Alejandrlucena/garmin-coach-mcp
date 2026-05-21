@@ -6,3 +6,5 @@ __pycache__/
 garmin_tokens.json
 *.token
 data/
+.DS_Store
+*.bak
