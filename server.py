@@ -2630,6 +2630,7 @@ async def login_result(request: Request) -> Response:
             '<div class="success">Tokens guardados en Railway automáticamente. '
             'Tu MCP es permanente — sobrevivirá a reinicios.</div>'
         )
+        parts.append('<a href="/" style="display:inline-block;margin-top:16px"><button type="button" class="secondary">Ir al panel</button></a>')
     else:
         # Manual persistence path: show ONE copy-paste block formatted for Railway.
         railway_block = f"GARMIN_TOKENS_JSON={tokens_b64}"
