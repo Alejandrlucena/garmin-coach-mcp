@@ -2157,7 +2157,6 @@ SELF_PUBLIC_URL = f"https://{RAILWAY_PUBLIC_DOMAIN}" if RAILWAY_PUBLIC_DOMAIN el
 
 _WEB_CONFIG_FILE = RAILWAY_VOLUME_ROOT / "web_config.json"
 _WEB_CONFIG_ALLOWED_KEYS = {"driveUrl"}
-_CONFIG_SHARES_DIR = RAILWAY_VOLUME_ROOT / "config_shares"
 
 
 @mcp.custom_route("/config", methods=["GET"])
@@ -2187,34 +2186,6 @@ async def save_web_config(request: Request) -> JSONResponse:
         return JSONResponse({"ok": True})
     except Exception as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
-
-
-@mcp.custom_route("/config/share", methods=["POST"])
-async def create_config_share(request: Request) -> JSONResponse:
-    try:
-        body = await request.json()
-        if not body or not isinstance(body, dict):
-            return JSONResponse({"error": "JSON inválido"}, status_code=400)
-        share_id = _secrets.token_urlsafe(12)
-        _CONFIG_SHARES_DIR.mkdir(parents=True, exist_ok=True)
-        (_CONFIG_SHARES_DIR / f"{share_id}.json").write_text(json.dumps(body))
-        return JSONResponse({"ok": True, "shareId": share_id})
-    except Exception as exc:
-        return JSONResponse({"error": str(exc)}, status_code=400)
-
-
-@mcp.custom_route("/config/share/{share_id}", methods=["GET"])
-async def get_config_share(request: Request) -> JSONResponse:
-    share_id = request.path_params.get("share_id", "")
-    if not share_id or "/" in share_id or ".." in share_id:
-        return JSONResponse({"error": "ID inválido"}, status_code=400)
-    share_file = _CONFIG_SHARES_DIR / f"{share_id}.json"
-    if not share_file.exists():
-        return JSONResponse({"error": "No encontrado"}, status_code=404)
-    try:
-        return JSONResponse(json.loads(share_file.read_text()))
-    except Exception:
-        return JSONResponse({"error": "Error al leer"}, status_code=500)
 
 
 @mcp.custom_route("/activities", methods=["GET"])
