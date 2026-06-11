@@ -2144,7 +2144,8 @@ async def download_activity_fit(request: Request) -> Response:
             )
         except Exception as exc:
             return JSONResponse({"error": f"No se pudo descargar: {exc}"}, status_code=503)
-    return JSONResponse({"error": "No hay tokens locales válidos para descargar esta actividad."}, status_code=503)
+    panel_url_dl = SELF_PUBLIC_URL or "el panel del servidor"
+    return JSONResponse({"error": "No hay tokens locales válidos para descargar esta actividad.", "fix": f"Abre {panel_url_dl} en tu navegador y haz clic en 'Re-loguear Garmin' para conectar de nuevo."}, status_code=503)
 
 
 # Optional fallback to another running instance when local tokens fail. Empty by
@@ -2269,8 +2270,9 @@ async def list_activities_web(request: Request) -> JSONResponse:
                 a.setdefault("avgHr", None)
             return JSONResponse({"activities": acts, "source": "fallback"})
         except Exception as exc:
-            return JSONResponse({"error": f"Sin tokens locales y el fallback no responde: {exc}"}, status_code=503)
-    return JSONResponse({"error": "Sin tokens locales válidos."}, status_code=503)
+            return JSONResponse({"error": f"Sin tokens locales y el fallback no responde: {exc}", "fix": "Abre el panel del servidor y haz clic en 'Re-loguear Garmin' para conectar de nuevo."}, status_code=503)
+    panel_url = SELF_PUBLIC_URL or "el panel del servidor"
+    return JSONResponse({"error": "Sin tokens locales válidos.", "fix": f"Abre {panel_url} en tu navegador y haz clic en 'Re-loguear Garmin' para conectar de nuevo."}, status_code=503)
 
 
 @mcp.custom_route("/debug/audit", methods=["GET"])
