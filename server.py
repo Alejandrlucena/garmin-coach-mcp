@@ -2218,6 +2218,34 @@ async def get_config_share(request: Request) -> JSONResponse:
         return JSONResponse({"error": "Error al leer"}, status_code=500)
 
 
+_ADJ_DIR = RAILWAY_VOLUME_ROOT / "adj"
+
+@mcp.custom_route("/adj/{act_id}", methods=["GET"])
+async def get_adj(_: Request, act_id: str) -> JSONResponse:
+    if "/" in act_id or ".." in act_id:
+        return JSONResponse({"error": "ID inválido"}, status_code=400)
+    adj_file = _ADJ_DIR / f"{act_id}.json"
+    if not adj_file.exists():
+        return JSONResponse({})
+    try:
+        return JSONResponse(json.loads(adj_file.read_text()))
+    except Exception:
+        return JSONResponse({})
+
+@mcp.custom_route("/adj/{act_id}", methods=["POST"])
+async def save_adj(request: Request, act_id: str) -> JSONResponse:
+    if "/" in act_id or ".." in act_id:
+        return JSONResponse({"error": "ID inválido"}, status_code=400)
+    try:
+        body = await request.json()
+        _ADJ_DIR.mkdir(parents=True, exist_ok=True)
+        adj_file = _ADJ_DIR / f"{act_id}.json"
+        adj_file.write_text(json.dumps(body))
+        return JSONResponse({"ok": True})
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
+
+
 @mcp.custom_route("/activities", methods=["GET"])
 async def list_activities_web(request: Request) -> JSONResponse:
     import urllib.request as _urllib
