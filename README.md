@@ -183,6 +183,8 @@ Garmin Connect → garminconnect (Python) → server.py → Railway → Claude /
 | `GET /activities?limit=30` | Lista de actividades recientes (JSON) con CORS |
 | `GET /download/{activity_id}` | Descarga el .zip/.fit de una actividad con CORS |
 | `GET /config` · `POST /config` | Configuración web persistida (solo clave `driveUrl`) |
+| `GET /adj/{activity_id}` | Obtiene los ajustes guardados de distancia/ritmo/vel para una actividad |
+| `POST /adj/{activity_id}` | Guarda ajustes de distancia/ritmo/vel para una actividad (persiste en volumen Railway) |
 | `POST /mcp` | Endpoint MCP principal para Claude |
 | `GET /debug/activities` · `GET /debug/audit` | Debug: actividades / métricas del caché |
 
@@ -244,6 +246,17 @@ El endpoint `/config` almacena la URL del Google Apps Script de Drive en el volu
 - `POST /config` — acepta `{"driveUrl": "..."}` y lo persiste en disco
 
 Solo se permite la clave `driveUrl`. No se almacena ningún dato de usuario ni credencial.
+
+---
+
+## Ajustes de actividad persistentes (`/adj/`)
+
+El endpoint `/adj/{activity_id}` permite al visualizador web [garmin-laps](https://github.com/Alejandrlucena/garmin-laps) persistir ajustes de distancia, ritmo y velocidad para cada actividad. Los datos se guardan en el volumen de Railway (`/data/adj/{activity_id}.json`).
+
+- `GET /adj/{activity_id}` — devuelve `{"dist":"12.5","pace":"4:12"}` o `{}` si no hay ajustes
+- `POST /adj/{activity_id}` — acepta un JSON con los campos ajustados (`dist`, `pace`, `speed`, etc.) y lo persiste en disco
+
+Esto permite que los ajustes sobrevivan a recargas de página y se sincronicen entre dispositivos conectados al mismo servidor Railway.
 
 ---
 
