@@ -2220,6 +2220,20 @@ async def get_config_share(request: Request) -> JSONResponse:
 
 _ADJ_DIR = RAILWAY_VOLUME_ROOT / "adj"
 
+@mcp.custom_route("/adj", methods=["GET"])
+async def list_adj(request: Request) -> JSONResponse:
+    if not _ADJ_DIR.exists():
+        return JSONResponse([])
+    files = []
+    for f in sorted(_ADJ_DIR.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+        if f.suffix == ".json":
+            try:
+                data = json.loads(f.read_text())
+                files.append({"id": f.stem, "data": data, "modified": f.stat().st_mtime})
+            except Exception:
+                files.append({"id": f.stem, "data": None, "modified": f.stat().st_mtime})
+    return JSONResponse(files)
+
 @mcp.custom_route("/adj/{act_id}", methods=["GET"])
 async def get_adj(request: Request) -> JSONResponse:
     act_id = request.path_params.get("act_id", "")
