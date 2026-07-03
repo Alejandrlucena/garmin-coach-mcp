@@ -11,4 +11,6 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY server.py .
 
+RUN mkdir -p /data
+
 CMD ["python", "server.py"]
