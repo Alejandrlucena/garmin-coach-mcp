@@ -2220,19 +2220,56 @@ async def get_config_share(request: Request) -> JSONResponse:
 
 _ADJ_DIR = RAILWAY_VOLUME_ROOT / "adj"
 
+def _disk_usage():
+    try:
+        import shutil
+        du = shutil.disk_usage(_ADJ_DIR if _ADJ_DIR.exists() else RAILWAY_VOLUME_ROOT)
+        return {"total": du.total, "used": du.used, "free": du.free}
+    except Exception:
+        return None
+
 @mcp.custom_route("/adj", methods=["GET"])
 async def list_adj(request: Request) -> JSONResponse:
+    storage = _disk_usage()
     if not _ADJ_DIR.exists():
-        return JSONResponse([])
+        return JSONResponse({"files": [], "storage": storage})
     files = []
     for f in sorted(_ADJ_DIR.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
         if f.suffix == ".json":
             try:
                 data = json.loads(f.read_text())
-                files.append({"id": f.stem, "data": data, "modified": f.stat().st_mtime})
+                files.append({"id": f.stem, "data": data, "modified": f.stat().st_mtime, "size": f.stat().st_size})
             except Exception:
-                files.append({"id": f.stem, "data": None, "modified": f.stat().st_mtime})
-    return JSONResponse(files)
+                files.append({"id": f.stem, "data": None, "modified": f.stat().st_mtime, "size": f.stat().st_size})
+    return JSONResponse({"files": files, "storage": storage})
+
+@mcp.custom_route("/adj", methods=["DELETE"])
+async def delete_all_adj(request: Request) -> JSONResponse:
+    if not _ADJ_DIR.exists():
+        return JSONResponse({"ok": True, "deleted": 0})
+    count = 0
+    for f in _ADJ_DIR.iterdir():
+        if f.suffix == ".json":
+            try:
+                f.unlink()
+                count += 1
+            except Exception:
+                pass
+    return JSONResponse({"ok": True, "deleted": count})
+
+@mcp.custom_route("/adj/{act_id}", methods=["DELETE"])
+async def delete_adj(request: Request) -> JSONResponse:
+    act_id = request.path_params.get("act_id", "")
+    if "/" in act_id or ".." in act_id:
+        return JSONResponse({"error": "ID inválido"}, status_code=400)
+    adj_file = _ADJ_DIR / f"{act_id}.json"
+    if not adj_file.exists():
+        return JSONResponse({"error": "No encontrado"}, status_code=404)
+    try:
+        adj_file.unlink()
+        return JSONResponse({"ok": True})
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=500)
 
 @mcp.custom_route("/adj/{act_id}", methods=["GET"])
 async def get_adj(request: Request) -> JSONResponse:
