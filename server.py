@@ -2221,7 +2221,8 @@ async def get_config_share(request: Request) -> JSONResponse:
 _ADJ_DIR = RAILWAY_VOLUME_ROOT / "adj"
 
 @mcp.custom_route("/adj/{act_id}", methods=["GET"])
-async def get_adj(_: Request, act_id: str) -> JSONResponse:
+async def get_adj(request: Request) -> JSONResponse:
+    act_id = request.path_params.get("act_id", "")
     if "/" in act_id or ".." in act_id:
         return JSONResponse({"error": "ID inválido"}, status_code=400)
     adj_file = _ADJ_DIR / f"{act_id}.json"
@@ -2233,7 +2234,8 @@ async def get_adj(_: Request, act_id: str) -> JSONResponse:
         return JSONResponse({})
 
 @mcp.custom_route("/adj/{act_id}", methods=["POST"])
-async def save_adj(request: Request, act_id: str) -> JSONResponse:
+async def save_adj(request: Request) -> JSONResponse:
+    act_id = request.path_params.get("act_id", "")
     if "/" in act_id or ".." in act_id:
         return JSONResponse({"error": "ID inválido"}, status_code=400)
     try:
