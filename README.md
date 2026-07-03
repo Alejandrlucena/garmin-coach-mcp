@@ -322,7 +322,5 @@ El visualizador [garmin-laps](https://github.com/Alejandrlucena/garmin-laps) tie
 | `Dockerfile` | Para despliegue en Railway |
 | `railway.toml` | Configuración Railway |
 | `bootstrap.sh` | Script de inicio en Railway |
-| `docker-compose.yml` | Para uso local con Docker |
-| `nginx.conf` | Config Nginx para proxy local |
 | `.env.example` | Variables de entorno de ejemplo |
 
